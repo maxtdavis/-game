@@ -13,7 +13,7 @@ class Player:
         pygame.draw.rect(surface, self.color, (self.x, self.y, 32, 32))
 
 class GameObject:
-    def __init__(self, x, y, filename=None, color=(200, 200, 200)):
+    def __init__(self, x, y, filename=None, color=(0, 0, 0)):
         self.x = x
         self.y = y
         self.width = 32
@@ -34,10 +34,9 @@ class GameObject:
             surface.blit(self.image, (self.x, self.y))
         else:
             pygame.draw.rect(surface, self.color, (self.x, self.y, self.width, self.height))
-            pygame.draw.rect(surface, (100, 100, 100), (self.x, self.y, self.width, self.height), 1)
 
 class Game:
-    def __init__(self, width, height, player, caption="Game", FPS=60):
+    def __init__(self, width, height, player, caption="Game", FPS=60, tile_size=32):
         self.width = width
         self.height = height
         self.p = player
@@ -45,27 +44,56 @@ class Game:
         self.caption = caption
         self.clock = pygame.time.Clock()
         self.screen = pygame.display.set_mode((self.width, self.height))
+        self.tile_size = tile_size
         self.grid = self.create_grid()
 
     def create_grid(self):
-        """Create a grid of 32x32 GameObject squares"""
+        """Create a grid of GameObject squares"""
         grid = []
-        tile_size = 32
-        cols = self.width // tile_size
-        rows = self.height // tile_size
+        cols = self.width // self.tile_size
+        rows = self.height // self.tile_size
         
         for row in range(rows):
             grid_row = []
             for col in range(cols):
-                x = col * tile_size
-                y = row * tile_size
+                x = col * self.tile_size
+                y = row * self.tile_size
                 grid_row.append(GameObject(x, y))
             grid.append(grid_row)
         
         return grid
+    
+    def get_tile(self, row, col):
+        """Get a specific tile from the grid by row and column"""
+        if 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0]):
+            return self.grid[row][col]
+        return None
+    
+    def configure_tile(self, row, col, color=None, filename=None):
+        """Configure a specific tile with custom color or image"""
+        tile = self.get_tile(row, col)
+        if tile:
+            if color:
+                tile.color = color
+            if filename:
+                try:
+                    tile.image = pygame.image.load(filename)
+                    tile.width = tile.image.get_width()
+                    tile.height = tile.image.get_height()
+                except:
+                    pass
+            return tile
+        return None
+    
+    def draw_grid(self):
+        """Draw all tiles in the grid"""
+        for row in self.grid:
+            for tile in row:
+                tile.draw(self.screen)
 
     def run(self):
         pygame.display.set_caption(self.caption)
+        game.configure_tile(10, 10, filename="images/flower_alive.png")
 
         self.running = True
         while self.running:
@@ -84,10 +112,7 @@ class Game:
             
             self.screen.fill((255, 255, 255))
             
-            # Draw grid
-            for row in self.grid:
-                for tile in row:
-                    tile.draw(self.screen)
+            self.draw_grid()
             
             self.p.draw(self.screen)
             pygame.display.flip()
