@@ -95,6 +95,6 @@ class Game:
         pygame.quit()
 
 if __name__ == "__main__":
-    player = Player(100, 100, (0, 128, 255))
+    player = Player(64, 64, (0, 128, 255))
     game = Game(WIDTH, HEIGHT, player)
     game.run()
