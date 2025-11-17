@@ -1,5 +1,4 @@
-# Full rewritten version of your game logic with correct collision handling
-# Focus: axis‑separated movement, no velocity-based correction, stable platforming
+# Added comments throughout explaining purpose and logic of each part.
 
 import pygame
 pygame.init()
@@ -8,34 +7,44 @@ WIDTH, HEIGHT = 768, 512
 
 class Player:
     def __init__(self, x, y, color):
+        # Player position
         self.x = x
         self.y = y
+        # Player size
         self.width = 32
         self.height = 32
         self.color = color
+        # Velocity components
         self.vel_x = 0
         self.vel_y = 0
+        # Movement parameters
         self.speed = 5
         self.jump_strength = -20
         self.gravity = 1
-        self.state = 1  # 1 = platformer, 2 = top-down
+        # State: 1 = platformer, 2 = top‑down
+        self.state = 1
         self.grounded = False
 
     @property
     def rect(self):
+        # Collision rectangle
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, surf):
+        # Draw player
         pygame.draw.rect(surf, self.color, self.rect)
 
 class GameObject:
     def __init__(self, x, y, filename=None, color=(0,0,0)):
+        # Base class for background, terrain, props
         self.x = x
         self.y = y
         self.width = 32
         self.height = 32
         self.color = color
         self.image = None
+        
+        # Load sprite image if given
         if filename:
             try:
                 self.image = pygame.image.load(filename)
@@ -62,6 +71,7 @@ class Background(GameObject):
 class Terrain(GameObject):
     def __init__(self, x, y, filename=None, color=(139,69,19)):
         super().__init__(x, y, filename, color)
+        # Solid tiles collide with the player
         self.is_solid = True
 
 class Level:
@@ -81,38 +91,43 @@ class Game:
         self.level = level
         self.tile_size = tile_size
 
+        # Grid of tiles (background by default)
         self.grid = self.create_grid()
+        # Replace tiles based on level map
         self.load_level()
 
     def create_grid(self):
+        # Basic grid filled with background tiles
         cols = self.width // self.tile_size
         rows = self.height // self.tile_size
         return [[Background(c*self.tile_size, r*self.tile_size) for c in range(cols)] for r in range(rows)]
 
     def load_level(self):
+        # Parse level map string and place tiles accordingly
         lines = self.level.map.strip().split("\n")
         for r, line in enumerate(lines):
             for c, ch in enumerate(line):
                 x = c * self.tile_size
                 y = r * self.tile_size
 
-                if ch == '.':
+                if ch == '.':   # Air / sky
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
-                elif ch == '#':
+                elif ch == '#': # Solid terrain
                     self.grid[r][c] = Terrain(x, y, color=(139,69,19))
-                elif ch == 'P':
+                elif ch == 'P': # Player spawn
                     self.p.x = x
                     self.p.y = y
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
 
     def solid_tiles(self):
+        # Generator for tiles that block movement
         for row in self.grid:
             for t in row:
                 if hasattr(t, 'is_solid') and t.is_solid:
                     yield t
 
     def move_axis(self, dx, dy):
-        # horizontal first
+        # Horizontal movement and collision resolution
         if dx != 0:
             self.p.x += dx
             pr = self.p.rect
@@ -124,7 +139,7 @@ class Game:
                         self.p.x = tile.x + tile.width
                     pr = self.p.rect
 
-        # vertical
+        # Vertical movement and collision resolution
         self.p.grounded = False
         if dy != 0:
             self.p.y += dy
@@ -135,19 +150,20 @@ class Game:
                         self.p.y = tile.y - self.p.height
                         self.p.vel_y = 0
                         self.p.grounded = True
-                    else:       # up
+                    else:       # moving up
                         self.p.y = tile.y + tile.height
                         self.p.vel_y = 0
                     pr = self.p.rect
 
     def update_player(self):
+        # Apply gravity when in platformer mode
         if self.p.state == 1:
             self.p.vel_y += self.p.gravity
             dx = self.p.vel_x
             dy = self.p.vel_y
             self.move_axis(dx, dy)
 
-        else:  # top‑down
+        else:  # Top‑down movement (no gravity)
             dx = self.p.vel_x
             dy = self.p.vel_y
             self.move_axis(dx, dy)
@@ -162,22 +178,27 @@ class Game:
         while running:
             self.clock.tick(self.FPS)
 
+            # Handle events
             for e in pygame.event.get():
                 if e.type == pygame.QUIT:
                     running = False
                 if e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_ESCAPE:
                         running = False
+                    # Toggle between platformer and top‑down
                     if e.key == pygame.K_SPACE:
                         self.p.state = 2 if self.p.state == 1 else 1
                         self.p.vel_x = 0
                         self.p.vel_y = 0
+                    # Jump only in platformer mode
                     if e.key == pygame.K_UP and self.p.state == 1 and self.p.grounded:
                         self.p.vel_y = self.p.jump_strength
 
+            # Handle continuous input
             keys = pygame.key.get_pressed()
 
             if self.p.state == 1:
+                # Left/right input
                 if keys[pygame.K_LEFT]:
                     self.p.vel_x = -self.p.speed
                 elif keys[pygame.K_RIGHT]:
@@ -185,6 +206,7 @@ class Game:
                 else:
                     self.p.vel_x = 0
             else:
+                # Top‑down directional movement
                 self.p.vel_x = 0
                 self.p.vel_y = 0
                 if keys[pygame.K_LEFT]:
@@ -196,8 +218,10 @@ class Game:
                 if keys[pygame.K_DOWN]:
                     self.p.vel_y = self.p.speed
 
+            # Update physics and collisions
             self.update_player()
 
+            # Draw frame
             self.screen.fill((255,255,255))
             self.draw_grid()
             self.p.draw(self.screen)
