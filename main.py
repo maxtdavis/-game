@@ -1,5 +1,7 @@
-import pygame
+# Full rewritten version of your game logic with correct collision handling
+# Focus: axis‑separated movement, no velocity-based correction, stable platforming
 
+import pygame
 pygame.init()
 
 WIDTH, HEIGHT = 768, 512
@@ -8,19 +10,32 @@ class Player:
     def __init__(self, x, y, color):
         self.x = x
         self.y = y
+        self.width = 32
+        self.height = 32
         self.color = color
-    def draw(self, surface):
-        pygame.draw.rect(surface, self.color, (self.x, self.y, 32, 32))
+        self.vel_x = 0
+        self.vel_y = 0
+        self.speed = 5
+        self.jump_strength = -20
+        self.gravity = 1
+        self.state = 1  # 1 = platformer, 2 = top-down
+        self.grounded = False
+
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, self.color, self.rect)
 
 class GameObject:
-    def __init__(self, x, y, filename=None, color=(0, 0, 0)):
+    def __init__(self, x, y, filename=None, color=(0,0,0)):
         self.x = x
         self.y = y
         self.width = 32
         self.height = 32
         self.color = color
         self.image = None
-        
         if filename:
             try:
                 self.image = pygame.image.load(filename)
@@ -29,97 +44,188 @@ class GameObject:
             except:
                 pass
 
-    def draw(self, surface):
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+
+    def draw(self, surf):
         if self.image:
-            surface.blit(self.image, (self.x, self.y))
+            surf.blit(self.image, (self.x, self.y))
         else:
-            pygame.draw.rect(surface, self.color, (self.x, self.y, self.width, self.height))
+            pygame.draw.rect(surf, self.color, self.rect)
+
+class Background(GameObject):
+    def __init__(self, x, y, filename=None, color=(200,200,200)):
+        super().__init__(x, y, filename, color)
+        self.is_solid = False
+
+class Terrain(GameObject):
+    def __init__(self, x, y, filename=None, color=(139,69,19)):
+        super().__init__(x, y, filename, color)
+        self.is_solid = True
+
+class Level:
+    def __init__(self, index, map_string, theme="basic"):
+        self.index = index
+        self.map = map_string
+        self.theme = theme
 
 class Game:
-    def __init__(self, width, height, player, caption="Game", FPS=60, tile_size=32):
+    def __init__(self, width, height, player, level, FPS=60, tile_size=32):
         self.width = width
         self.height = height
-        self.p = player
-        self.FPS = FPS
-        self.caption = caption
+        self.screen = pygame.display.set_mode((width, height))
         self.clock = pygame.time.Clock()
-        self.screen = pygame.display.set_mode((self.width, self.height))
+        self.FPS = FPS
+        self.p = player
+        self.level = level
         self.tile_size = tile_size
+
         self.grid = self.create_grid()
+        self.load_level()
 
     def create_grid(self):
-        """Create a grid of GameObject squares"""
-        grid = []
         cols = self.width // self.tile_size
         rows = self.height // self.tile_size
-        
-        for row in range(rows):
-            grid_row = []
-            for col in range(cols):
-                x = col * self.tile_size
-                y = row * self.tile_size
-                grid_row.append(GameObject(x, y))
-            grid.append(grid_row)
-        
-        return grid
-    
-    def get_tile(self, row, col):
-        """Get a specific tile from the grid by row and column"""
-        if 0 <= row < len(self.grid) and 0 <= col < len(self.grid[0]):
-            return self.grid[row][col]
-        return None
-    
-    def configure_tile(self, row, col, color=None, filename=None):
-        """Configure a specific tile with custom color or image"""
-        tile = self.get_tile(row, col)
-        if tile:
-            if color:
-                tile.color = color
-            if filename:
-                try:
-                    tile.image = pygame.image.load(filename)
-                    tile.width = tile.image.get_width()
-                    tile.height = tile.image.get_height()
-                except:
-                    pass
-            return tile
-        return None
-    
-    def draw_grid(self):
-        """Draw all tiles in the grid"""
+        return [[Background(c*self.tile_size, r*self.tile_size) for c in range(cols)] for r in range(rows)]
+
+    def load_level(self):
+        lines = self.level.map.strip().split("\n")
+        for r, line in enumerate(lines):
+            for c, ch in enumerate(line):
+                x = c * self.tile_size
+                y = r * self.tile_size
+
+                if ch == '.':
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
+                elif ch == '#':
+                    self.grid[r][c] = Terrain(x, y, color=(139,69,19))
+                elif ch == 'P':
+                    self.p.x = x
+                    self.p.y = y
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
+
+    def solid_tiles(self):
         for row in self.grid:
-            for tile in row:
-                tile.draw(self.screen)
+            for t in row:
+                if hasattr(t, 'is_solid') and t.is_solid:
+                    yield t
+
+    def move_axis(self, dx, dy):
+        # horizontal first
+        if dx != 0:
+            self.p.x += dx
+            pr = self.p.rect
+            for tile in self.solid_tiles():
+                if pr.colliderect(tile.rect):
+                    if dx > 0:  # moving right
+                        self.p.x = tile.x - self.p.width
+                    else:       # moving left
+                        self.p.x = tile.x + tile.width
+                    pr = self.p.rect
+
+        # vertical
+        self.p.grounded = False
+        if dy != 0:
+            self.p.y += dy
+            pr = self.p.rect
+            for tile in self.solid_tiles():
+                if pr.colliderect(tile.rect):
+                    if dy > 0:  # moving down
+                        self.p.y = tile.y - self.p.height
+                        self.p.vel_y = 0
+                        self.p.grounded = True
+                    else:       # up
+                        self.p.y = tile.y + tile.height
+                        self.p.vel_y = 0
+                    pr = self.p.rect
+
+    def update_player(self):
+        if self.p.state == 1:
+            self.p.vel_y += self.p.gravity
+            dx = self.p.vel_x
+            dy = self.p.vel_y
+            self.move_axis(dx, dy)
+
+        else:  # top‑down
+            dx = self.p.vel_x
+            dy = self.p.vel_y
+            self.move_axis(dx, dy)
+
+    def draw_grid(self):
+        for row in self.grid:
+            for t in row:
+                t.draw(self.screen)
 
     def run(self):
-        pygame.display.set_caption(self.caption)
-        game.configure_tile(10, 10, filename="images/flower_alive.png")
-
-        self.running = True
-        while self.running:
+        running = True
+        while running:
             self.clock.tick(self.FPS)
-            
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    self.running = False
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self.running = False
-                    if event.key == pygame.K_LEFT:
-                        self.p.x -= 8
-                    if event.key == pygame.K_RIGHT:
-                        self.p.x += 8
-            
-            self.screen.fill((255, 255, 255))
-            
+
+            for e in pygame.event.get():
+                if e.type == pygame.QUIT:
+                    running = False
+                if e.type == pygame.KEYDOWN:
+                    if e.key == pygame.K_ESCAPE:
+                        running = False
+                    if e.key == pygame.K_SPACE:
+                        self.p.state = 2 if self.p.state == 1 else 1
+                        self.p.vel_x = 0
+                        self.p.vel_y = 0
+                    if e.key == pygame.K_UP and self.p.state == 1 and self.p.grounded:
+                        self.p.vel_y = self.p.jump_strength
+
+            keys = pygame.key.get_pressed()
+
+            if self.p.state == 1:
+                if keys[pygame.K_LEFT]:
+                    self.p.vel_x = -self.p.speed
+                elif keys[pygame.K_RIGHT]:
+                    self.p.vel_x = self.p.speed
+                else:
+                    self.p.vel_x = 0
+            else:
+                self.p.vel_x = 0
+                self.p.vel_y = 0
+                if keys[pygame.K_LEFT]:
+                    self.p.vel_x = -self.p.speed
+                if keys[pygame.K_RIGHT]:
+                    self.p.vel_x = self.p.speed
+                if keys[pygame.K_UP]:
+                    self.p.vel_y = -self.p.speed
+                if keys[pygame.K_DOWN]:
+                    self.p.vel_y = self.p.speed
+
+            self.update_player()
+
+            self.screen.fill((255,255,255))
             self.draw_grid()
-            
             self.p.draw(self.screen)
             pygame.display.flip()
 
         pygame.quit()
 
 if __name__ == "__main__":
-    player = Player(64, 64, (0, 128, 255))
-    game = Game(WIDTH, HEIGHT, player)
+    LEVEL_1_MAP = """
+........................
+........................
+........................
+.......P................
+........................
+........#...............
+...........##...........
+..............###.......
+####....................
+##......................
+##......................
+##......................
+##......................
+##......................
+########################
+########################
+"""
+
+    level = Level(1, LEVEL_1_MAP)
+    player = Player(0,0,(0,128,255))
+    game = Game(WIDTH, HEIGHT, player, level)
     game.run()
