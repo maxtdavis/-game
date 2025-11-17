@@ -6,14 +6,16 @@ pygame.init()
 WIDTH, HEIGHT = 768, 512
 
 class Player:
-    def __init__(self, x, y, color):
+    def __init__(self, x, y, color=(0,128,255), filename=None):
         # Player position
         self.x = x
         self.y = y
+        self.direction = 'right'
         # Player size
         self.width = 32
-        self.height = 32
+        self.height = 48
         self.color = color
+        self.filename = filename
         # Velocity components
         self.vel_x = 0
         self.vel_y = 0
@@ -32,6 +34,13 @@ class Player:
 
     def draw(self, surf):
         # Draw player
+        if self.filename:
+            try:
+                image = pygame.image.load(self.filename)
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
         pygame.draw.rect(surf, self.color, self.rect)
 
 class GameObject:
@@ -74,6 +83,23 @@ class Terrain(GameObject):
         # Solid tiles collide with the player
         self.is_solid = True
 
+class UnmovableProp(GameObject):
+    def __init__(self, x, y, filenames=(None, None), color=(100,100,100), is_alive=False):
+        super().__init__(x, y, filenames[0] if is_alive==False else filenames[1], color)
+        self.is_alive = is_alive
+        self.filenames = filenames
+        # Solid tiles collide with the player
+        if self.is_alive:
+            self.is_solid = True
+    def paint(self):
+        self.is_alive = True
+        self.is_solid = True
+        self.filename = self.filenames[1]
+        try:
+            self.image = pygame.image.load(self.filename)
+        except:
+            print("Failed to load image:", self.filename)
+
 class Level:
     def __init__(self, index, map_string, theme="basic"):
         self.index = index
@@ -113,11 +139,13 @@ class Game:
                 if ch == '.':   # Air / sky
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == '#': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, color=(139,69,19))
+                    self.grid[r][c] = Terrain(x, y, filename="images/grass.png")
                 elif ch == 'P': # Player spawn
                     self.p.x = x
                     self.p.y = y
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
+                elif ch == 'i': # Interactive prop
+                    self.grid[r][c] = UnmovableProp(x, y, filenames=("images/grass_dead.png", "images/grass.png"), is_alive=False)
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -190,19 +218,37 @@ class Game:
                         self.p.state = 2 if self.p.state == 1 else 1
                         self.p.vel_x = 0
                         self.p.vel_y = 0
-                    # Jump only in platformer mode
-                    if e.key == pygame.K_UP and self.p.state == 1 and self.p.grounded:
-                        self.p.vel_y = self.p.jump_strength
+                    if e.key == pygame.K_z and self.p.state == 2:
+                        # Scan for nearby unmovable props to paint
+                        if self.p.direction == 'right':
+                            if self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size].__class__ == UnmovableProp or self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size + 1].__class__ == UnmovableProp:
+                                if self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size].__class__ == UnmovableProp:
+                                    prop = self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size]
+                                else:
+                                    prop = self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size + 1]
+                                prop.paint()
+                        if self.p.direction == 'left':
+                            if self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size].__class__ == UnmovableProp or self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size - 1].__class__ == UnmovableProp:
+                                if self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size].__class__ == UnmovableProp:
+                                    prop = self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size]
+                                else:
+                                    prop = self.grid[self.p.y // self.tile_size][self.p.x // self.tile_size - 1]
+                                prop.paint()
 
             # Handle continuous input
             keys = pygame.key.get_pressed()
 
             if self.p.state == 1:
                 # Left/right input
-                if keys[pygame.K_LEFT]:
-                    self.p.vel_x = -self.p.speed
+                if keys[pygame.K_UP] and self.p.grounded:
+                    # Jump only in platformer mode
+                    self.p.vel_y = self.p.jump_strength
                 elif keys[pygame.K_RIGHT]:
                     self.p.vel_x = self.p.speed
+                    self.p.direction = 'right'
+                elif keys[pygame.K_LEFT]:
+                    self.p.vel_x = -self.p.speed
+                    self.p.direction = 'left'
                 else:
                     self.p.vel_x = 0
             else:
@@ -231,25 +277,25 @@ class Game:
 
 if __name__ == "__main__":
     LEVEL_1_MAP = """
-........................
-........................
-........................
-.......P................
-........................
-........#...............
-...........##...........
-..............###.......
-####....................
-##......................
-##......................
-##......................
-##......................
-##......................
+########################
+#......................#
+#......................#
+#......P...............#
+#......................#
+#.......#..............#
+#..........##..........#
+#.............###......#
+####...................#
+##.....................#
+##.....................#
+##.....................#
+##.....................#
+##.............i.......#
 ########################
 ########################
 """
 
     level = Level(1, LEVEL_1_MAP)
-    player = Player(0,0,(0,128,255))
+    player = Player(0,0)#filename="images/Character.png")
     game = Game(WIDTH, HEIGHT, player, level)
     game.run()
