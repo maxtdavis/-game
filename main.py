@@ -173,7 +173,7 @@ class Game:
                     self.p.y = y
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == 'i': # Interactive prop
-                    self.grid[r][c] = ImmovableProp(x, y, filenames=("images/grass_dead.png", "images/grass.png"), is_alive=False)
+                    self.grid[r][c] = ImmovableProp(x, y, filenames=("images/flower_dead.png", "images/flower_alive.png"), is_alive=False)
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                     self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
