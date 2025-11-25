@@ -88,17 +88,20 @@ class UnmovableProp(GameObject):
         super().__init__(x, y, filenames[0] if is_alive==False else filenames[1], color)
         self.is_alive = is_alive
         self.filenames = filenames
+        self.is_solid = False
         # Solid tiles collide with the player
         if self.is_alive:
             self.is_solid = True
+    
     def paint(self):
         self.is_alive = True
         self.is_solid = True
-        self.filename = self.filenames[1]
         try:
-            self.image = pygame.image.load(self.filename)
+            self.image = pygame.image.load(self.filenames[1])
+            self.width = self.image.get_width()
+            self.height = self.image.get_height()
         except:
-            print("Failed to load image:", self.filename)
+            print("Failed to load image:", self.filenames[1])
 
 class MovableObject(GameObject):
     def __init__(self, x, y, filename=None, color=(160,82,45)):
@@ -106,6 +109,22 @@ class MovableObject(GameObject):
         # Movable objects are solid and can be pushed
         self.is_solid = True
         self.is_movable = True
+        # Physics
+        self.vel_x = 0
+        self.vel_y = 0
+        self.gravity = 1
+        self.grounded = False
+        self.speed = 5
+    
+    @property
+    def rect(self):
+        return pygame.Rect(self.x, self.y, self.width, self.height)
+    
+    def draw(self, surf):
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
+        else:
+            pygame.draw.rect(surf, self.color, self.rect)
 
 class Level:
     def __init__(self, index, map_string, theme="basic"):
@@ -126,6 +145,8 @@ class Game:
 
         # Grid of tiles (background by default)
         self.grid = self.create_grid()
+        # List to store movable objects
+        self.movable_objects = []
         # Replace tiles based on level map
         self.load_level()
 
@@ -154,7 +175,8 @@ class Game:
                 elif ch == 'i': # Interactive prop
                     self.grid[r][c] = UnmovableProp(x, y, filenames=("images/grass_dead.png", "images/grass.png"), is_alive=False)
                 elif ch == 'M': # Movable object
-                    self.grid[r][c] = MovableObject(x, y, filename="images/crate.png")
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
+                    self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -162,43 +184,33 @@ class Game:
             for t in row:
                 if hasattr(t, 'is_solid') and t.is_solid:
                     yield t
+    
+    def all_solid_objects(self):
+        # Generator for all solid objects (tiles + movable objects)
+        for obj in self.solid_tiles():
+            yield obj
+        for obj in self.movable_objects:
+            yield obj
 
     def move_axis(self, dx, dy):
         # Horizontal movement and collision resolution
         if dx != 0:
             self.p.x += dx
             pr = self.p.rect
-            for tile in self.solid_tiles():
-                if pr.colliderect(tile.rect):
+            for obj in self.all_solid_objects():
+                if pr.colliderect(obj.rect):
                     # Check if it's a movable object
-                    if hasattr(tile, 'is_movable') and tile.is_movable:
+                    if hasattr(obj, 'is_movable') and obj.is_movable:
                         # Try to push the object
-                        push_distance = self.tile_size if dx > 0 else -self.tile_size
-                        new_x = tile.x + push_distance
-                        
-                        # Check if the push destination is valid
-                        test_rect = pygame.Rect(new_x, tile.y, tile.width, tile.height)
-                        can_push = True
-                        for other_tile in self.solid_tiles():
-                            if other_tile is not tile and test_rect.colliderect(other_tile.rect):
-                                can_push = False
-                                break
-                        
-                        if can_push:
-                            # Push the object
-                            tile.x = new_x
-                        else:
-                            # Can't push, treat as normal collision
-                            if dx > 0:  # moving right
-                                self.p.x = tile.x - self.p.width
-                            else:       # moving left
-                                self.p.x = tile.x + tile.width
+                        push_dx = self.p.speed if dx > 0 else -self.p.speed
+                        obj.vel_x = push_dx
+                        obj.x += push_dx
                     else:
                         # Normal collision
                         if dx > 0:  # moving right
-                            self.p.x = tile.x - self.p.width
+                            self.p.x = obj.x - self.p.width
                         else:       # moving left
-                            self.p.x = tile.x + tile.width
+                            self.p.x = obj.x + obj.width
                     pr = self.p.rect
 
         # Vertical movement and collision resolution
@@ -206,44 +218,33 @@ class Game:
         if dy != 0:
             self.p.y += dy
             pr = self.p.rect
-            for tile in self.solid_tiles():
-                if pr.colliderect(tile.rect):
+            for obj in self.all_solid_objects():
+                if pr.colliderect(obj.rect):
                     # Check if it's a movable object (only in top-down mode)
-                    if self.p.state == 2 and hasattr(tile, 'is_movable') and tile.is_movable:
-                        # Try to push the object
-                        push_distance = self.tile_size if dy > 0 else -self.tile_size
-                        new_y = tile.y + push_distance
-                        
-                        # Check if the push destination is valid
-                        test_rect = pygame.Rect(tile.x, new_y, tile.width, tile.height)
-                        can_push = True
-                        for other_tile in self.solid_tiles():
-                            if other_tile is not tile and test_rect.colliderect(other_tile.rect):
-                                can_push = False
-                                break
-                        
-                        if can_push:
-                            # Push the object
-                            tile.y = new_y
+                    if hasattr(obj, 'is_movable') and obj.is_movable:
+                        if self.p.state == 2:
+                            # Try to push the object vertically in top-down mode
+                            push_dy = self.p.speed if dy > 0 else -self.p.speed
+                            obj.vel_y = push_dy
+                            obj.y += push_dy
                         else:
-                            # Can't push, treat as normal collision
+                            # Normal collision in platformer mode
                             if dy > 0:  # moving down
-                                self.p.y = tile.y - self.p.height
+                                self.p.y = obj.y - self.p.height
                                 self.p.vel_y = 0
-                                if self.p.state == 1:
-                                    self.p.grounded = True
+                                self.p.grounded = True
                             else:       # moving up
-                                self.p.y = tile.y + tile.height
+                                self.p.y = obj.y + obj.height
                                 self.p.vel_y = 0
                     else:
                         # Normal collision
                         if dy > 0:  # moving down
-                            self.p.y = tile.y - self.p.height
+                            self.p.y = obj.y - self.p.height
                             self.p.vel_y = 0
                             if self.p.state == 1:
                                 self.p.grounded = True
                         else:       # moving up
-                            self.p.y = tile.y + tile.height
+                            self.p.y = obj.y + obj.height
                             self.p.vel_y = 0
                     pr = self.p.rect
 
@@ -259,11 +260,61 @@ class Game:
             dx = self.p.vel_x
             dy = self.p.vel_y
             self.move_axis(dx, dy)
+    
+    def update_movable_objects(self):
+        # Update physics for all movable objects
+        for obj in self.movable_objects:
+            # Apply gravity in platformer mode
+            if self.p.state == 1:
+                obj.vel_y += obj.gravity
+            else:
+                obj.vel_y = 0  # No gravity in top-down mode
+            
+            # Apply velocity
+            dx = obj.vel_x
+            dy = obj.vel_y
+            
+            # Horizontal collision
+            if dx != 0:
+                obj.x += dx
+                or_rect = obj.rect
+                for other_obj in self.all_solid_objects():
+                    if other_obj is not obj and or_rect.colliderect(other_obj.rect):
+                        if dx > 0:
+                            obj.x = other_obj.x - obj.width
+                        else:
+                            obj.x = other_obj.x + other_obj.width
+                        obj.vel_x = 0
+                        break
+            
+            # Vertical collision
+            obj.grounded = False
+            if dy != 0:
+                obj.y += dy
+                or_rect = obj.rect
+                for other_obj in self.all_solid_objects():
+                    if other_obj is not obj and or_rect.colliderect(other_obj.rect):
+                        if dy > 0:  # falling
+                            obj.y = other_obj.y - obj.height
+                            obj.vel_y = 0
+                            obj.grounded = True
+                        else:  # moving up
+                            obj.y = other_obj.y + other_obj.height
+                            obj.vel_y = 0
+                        break
+            
+            # Friction
+            if obj.grounded:
+                obj.vel_x *= 0.9
 
     def draw_grid(self):
         for row in self.grid:
             for t in row:
                 t.draw(self.screen)
+    
+    def draw_movable_objects(self):
+        for obj in self.movable_objects:
+            obj.draw(self.screen)
 
     def run(self):
         running = True
@@ -282,7 +333,11 @@ class Game:
                         self.p.state = 2 if self.p.state == 1 else 1
                         self.p.vel_x = 0
                         self.p.vel_y = 0
-                    if e.key == pygame.K_z and self.p.state == 2:
+                        # Reset velocities of all movable objects
+                        for obj in self.movable_objects:
+                            obj.vel_x = 0
+                            obj.vel_y = 0
+                    if e.key == pygame.K_z and self.p.state == 1:
                         # Calculate player's center position in grid coordinates
                         player_grid_x = (self.p.x + self.p.width // 2) // self.tile_size
                         player_grid_y = (self.p.y + self.p.height // 2) // self.tile_size
@@ -338,10 +393,12 @@ class Game:
 
             # Update physics and collisions
             self.update_player()
+            self.update_movable_objects()
 
             # Draw frame
             self.screen.fill((255,255,255))
             self.draw_grid()
+            self.draw_movable_objects()
             self.p.draw(self.screen)
             pygame.display.flip()
 
@@ -355,16 +412,16 @@ if __name__ == "__main__":
 #......P...............#
 #......................#
 #.......#..............#
-#..........##..........#
+#..........##...M......#
 #.............###......#
 ####...................#
 ##.....................#
-##..........M..........#
+##.....................#
 ##.....................#
 ##.....................#
 ##.............i.......#
 ########################
-########################
+######################## 
 """
 
     level = Level(1, LEVEL_1_MAP)
