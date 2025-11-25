@@ -115,6 +115,8 @@ class MovableObject(GameObject):
         self.gravity = 1
         self.grounded = False
         self.speed = 5
+        # Head riding mechanic
+        self.on_player_head = False
     
     @property
     def rect(self):
@@ -147,6 +149,8 @@ class Game:
         self.grid = self.create_grid()
         # List to store movable objects
         self.movable_objects = []
+        # Track which movable object is on player's head
+        self.object_on_player_head = None
         # Replace tiles based on level map
         self.load_level()
 
@@ -198,6 +202,9 @@ class Game:
             self.p.x += dx
             pr = self.p.rect
             for obj in self.all_solid_objects():
+                # Skip object on player's head
+                if obj is self.object_on_player_head:
+                    continue
                 if pr.colliderect(obj.rect):
                     # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
@@ -234,6 +241,9 @@ class Game:
             self.p.y += dy
             pr = self.p.rect
             for obj in self.all_solid_objects():
+                # Skip object on player's head
+                if obj is self.object_on_player_head:
+                    continue
                 if pr.colliderect(obj.rect):
                     # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
@@ -294,6 +304,20 @@ class Game:
     def update_movable_objects(self):
         # Update physics for all movable objects
         for obj in self.movable_objects:
+            # Check if object is on player's head
+            if self.p.state == 1 and obj.on_player_head:
+                # Object moves with player horizontally
+                obj.x = self.p.x + (self.p.width - obj.width) // 2
+                # Object stays on top of player
+                obj.y = self.p.y - obj.height
+                obj.vel_x = 0
+                obj.vel_y = 0
+                obj.grounded = True
+                continue
+            
+            # Reset head flag if not on head
+            obj.on_player_head = False
+            
             # Apply gravity in platformer mode
             if self.p.state == 1:
                 obj.vel_y += obj.gravity
@@ -328,6 +352,10 @@ class Game:
                             obj.y = other_obj.y - obj.height
                             obj.vel_y = 0
                             obj.grounded = True
+                            # Check if landing on player's head (object directly above player)
+                            if self.p.state == 1 and other_obj is self.p:
+                                obj.on_player_head = True
+                                self.object_on_player_head = obj
                         else:  # moving up
                             obj.y = other_obj.y + other_obj.height
                             obj.vel_y = 0
@@ -396,8 +424,14 @@ class Game:
             if self.p.state == 1:
                 # Left/right input
                 if keys[pygame.K_UP] and self.p.grounded:
-                    # Jump only in platformer mode
-                    self.p.vel_y = self.p.jump_strength
+                    # If object is on player's head, eject it instead of jumping
+                    if self.object_on_player_head:
+                        self.object_on_player_head.on_player_head = False
+                        self.object_on_player_head.vel_y = -10
+                        self.object_on_player_head = None
+                    else:
+                        # Jump only in platformer mode when not carrying
+                        self.p.vel_y = self.p.jump_strength
                 elif keys[pygame.K_RIGHT]:
                     self.p.vel_x = self.p.speed
                     self.p.direction = 'right'
