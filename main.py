@@ -83,7 +83,7 @@ class Terrain(GameObject):
         # Solid tiles collide with the player
         self.is_solid = True
 
-class UnmovableProp(GameObject):
+class ImmovableProp(GameObject):
     def __init__(self, x, y, filenames=(None, None), color=(100,100,100), is_alive=False):
         super().__init__(x, y, filenames[0] if is_alive==False else filenames[1], color)
         self.is_alive = is_alive
@@ -173,7 +173,7 @@ class Game:
                     self.p.y = y
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == 'i': # Interactive prop
-                    self.grid[r][c] = UnmovableProp(x, y, filenames=("images/grass_dead.png", "images/grass.png"), is_alive=False)
+                    self.grid[r][c] = ImmovableProp(x, y, filenames=("images/grass_dead.png", "images/grass.png"), is_alive=False)
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                     self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
@@ -348,13 +348,13 @@ class Game:
                             # Check tile to the right
                             check_x = player_grid_x + 1
                             if 0 <= check_x < len(self.grid[0]) and 0 <= player_grid_y < len(self.grid):
-                                if isinstance(self.grid[player_grid_y][check_x], UnmovableProp):
+                                if isinstance(self.grid[player_grid_y][check_x],ImmovableProp):
                                     prop = self.grid[player_grid_y][check_x]
                         elif self.p.direction == 'left':
                             # Check tile to the left
                             check_x = player_grid_x - 1
                             if 0 <= check_x < len(self.grid[0]) and 0 <= player_grid_y < len(self.grid):
-                                if isinstance(self.grid[player_grid_y][check_x], UnmovableProp):
+                                if isinstance(self.grid[player_grid_y][check_x], ImmovableProp):
                                     prop = self.grid[player_grid_y][check_x]
                         
                         if prop:
