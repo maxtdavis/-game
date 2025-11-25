@@ -207,10 +207,32 @@ class Game:
                 if pr.colliderect(obj.rect):
                     # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
-                        # Try to push the object
-                        push_dx = self.p.speed if dx > 0 else -self.p.speed
-                        obj.vel_x = push_dx
-                        obj.x += push_dx
+                        if self.p.state == 2:
+                            # Try to push the object horizontally in top-down mode
+                            push_dx = self.p.speed if dx > 0 else -self.p.speed
+                            # Check if the push destination is valid (no collision)
+                            test_rect = pygame.Rect(obj.x + push_dx, obj.y, obj.width, obj.height)
+                            can_push = True
+                            for other_obj in self.all_solid_objects():
+                                if other_obj is not obj and test_rect.colliderect(other_obj.rect):
+                                    can_push = False
+                                    break
+                            
+                            if can_push:
+                                obj.vel_x = push_dx
+                                obj.x += push_dx
+                            else:
+                                # Can't push, stop player movement
+                                if dx > 0:
+                                    self.p.x = obj.x - self.p.width
+                                else:
+                                    self.p.x = obj.x + obj.width
+                        else:
+                            # Normal collision in platformer mode
+                            if dx > 0:  # moving right
+                                self.p.x = obj.x - self.p.width
+                            else:       # moving left
+                                self.p.x = obj.x + obj.width
                     else:
                         # Normal collision
                         if dx > 0:  # moving right
@@ -226,13 +248,28 @@ class Game:
             pr = self.p.rect
             for obj in self.all_solid_objects():
                 if pr.colliderect(obj.rect):
-                    # Check if it's a movable object (only in top-down mode)
+                    # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
                         if self.p.state == 2:
                             # Try to push the object vertically in top-down mode
                             push_dy = self.p.speed if dy > 0 else -self.p.speed
-                            obj.vel_y = push_dy
-                            obj.y += push_dy
+                            # Check if the push destination is valid (no collision)
+                            test_rect = pygame.Rect(obj.x, obj.y + push_dy, obj.width, obj.height)
+                            can_push = True
+                            for other_obj in self.all_solid_objects():
+                                if other_obj is not obj and test_rect.colliderect(other_obj.rect):
+                                    can_push = False
+                                    break
+                            
+                            if can_push:
+                                obj.vel_y = push_dy
+                                obj.y += push_dy
+                            else:
+                                # Can't push, stop player movement
+                                if dy > 0:
+                                    self.p.y = obj.y - self.p.height
+                                else:
+                                    self.p.y = obj.y + obj.height
                         else:
                             # Normal collision in platformer mode
                             if dy > 0:  # moving down
@@ -449,6 +486,6 @@ if __name__ == "__main__":
 """
 
     level = Level(1, LEVEL_1_MAP)
-    player = Player(0,0)#filename="images/Character.png")
+    player = Player(0,0, filename="images/Character_Idle_1.png")
     game = Game(WIDTH, HEIGHT, player, level)
     game.run()
