@@ -314,53 +314,41 @@ class Game:
         for obj in self.movable_objects:
             # Check if object is on player's head
             if self.p.state == 1 and obj.on_player_head:
-                # Object moves with player horizontally
+                # Object moves with player
                 obj.x = self.p.x + (self.p.width - obj.width) // 2
-                # Object stays on top of player
                 obj.y = self.p.y - obj.height
                 obj.vel_x = 0
                 obj.vel_y = 0
                 obj.grounded = True
                 continue
             
-            # Reset head flag if not on head
             obj.on_player_head = False
             
             # Apply gravity in platformer mode
             if self.p.state == 1:
                 obj.vel_y += obj.gravity
             else:
-                obj.vel_y = 0  # No gravity in top-down mode
+                obj.vel_y = 0
             
-            # Apply velocity
-            dx = obj.vel_x
-            dy = obj.vel_y
-            
-            # Horizontal collision
-            if dx != 0:
-                obj.x += dx
-                or_rect = obj.rect
+            # Move and collide horizontally
+            if obj.vel_x != 0:
+                obj.x += obj.vel_x
                 for other_obj in self.all_solid_objects():
-                    if other_obj is not obj and or_rect.colliderect(other_obj.rect):
-                        if dx > 0:
-                            obj.x = other_obj.x - obj.width
-                        else:
-                            obj.x = other_obj.x + other_obj.width
+                    if other_obj is not obj and obj.rect.colliderect(other_obj.rect):
+                        obj.x = other_obj.x - obj.width if obj.vel_x > 0 else other_obj.x + other_obj.width
                         obj.vel_x = 0
                         break
             
-            # Vertical collision
+            # Move and collide vertically
             obj.grounded = False
-            if dy != 0:
-                obj.y += dy
-                or_rect = obj.rect
+            if obj.vel_y != 0:
+                obj.y += obj.vel_y
                 for other_obj in self.all_solid_objects():
-                    if other_obj is not obj and or_rect.colliderect(other_obj.rect):
-                        if dy > 0:  # falling
+                    if other_obj is not obj and obj.rect.colliderect(other_obj.rect):
+                        if obj.vel_y > 0:  # falling
                             obj.y = other_obj.y - obj.height
                             obj.vel_y = 0
                             obj.grounded = True
-                            # Check if landing on player's head (object directly above player)
                             if self.p.state == 1 and other_obj is self.p:
                                 obj.on_player_head = True
                                 self.object_on_player_head = obj
