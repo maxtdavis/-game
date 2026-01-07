@@ -379,6 +379,26 @@ class Game:
     def draw_movable_objects(self):
         for obj in self.movable_objects:
             obj.draw(self.screen)
+    
+    def reset_level(self):
+        # Reset player position and state
+        self.p.x = 0
+        self.p.y = 0
+        self.p.vel_x = 0
+        self.p.vel_y = 0
+        self.p.state = 1
+        self.p.grounded = False
+        self.p.direction = 'right'
+        
+        # Reset object on head
+        if self.object_on_player_head:
+            self.object_on_player_head.on_player_head = False
+            self.object_on_player_head = None
+        
+        # Reload the level
+        self.movable_objects = []
+        self.grid = self.create_grid()
+        self.load_level()
 
     def run(self):
         running = True
@@ -392,6 +412,9 @@ class Game:
                 if e.type == pygame.KEYDOWN:
                     if e.key == pygame.K_ESCAPE:
                         running = False
+                    # Reset level
+                    if e.key == pygame.K_r:
+                        self.reset_level()
                     # Toggle between platformer and top‑down
                     if e.key == pygame.K_SPACE:
                         self.p.state = 2 if self.p.state == 1 else 1
