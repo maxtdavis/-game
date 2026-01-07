@@ -225,8 +225,9 @@ class Game:
                                 break
                         
                         if can_push:
-                            obj.vel_x = push_dx
+                            # Move the object only the amount pushed, no velocity
                             obj.x += push_dx
+                            obj.vel_x = 0
                         else:
                             # Can't push, stop player movement
                             if dx > 0:
@@ -265,8 +266,9 @@ class Game:
                                     break
                             
                             if can_push:
-                                obj.vel_y = push_dy
+                                # Move the object only the amount pushed, no velocity
                                 obj.y += push_dy
+                                obj.vel_y = 0
                             else:
                                 # Can't push, stop player movement
                                 if dy > 0:
