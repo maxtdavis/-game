@@ -84,7 +84,7 @@ class Terrain(GameObject):
         self.is_solid = True
 
 class ImmovableProp(GameObject):
-    def __init__(self, x, y, filenames=(None, None), color=(100,100,100), is_alive=False):
+    def __init__(self, x, y, filenames=(None, None), color=(200,200,100), is_alive=False):
         super().__init__(x, y, filenames[0] if is_alive==False else filenames[1], color)
         self.is_alive = is_alive
         self.filenames = filenames
@@ -102,6 +102,11 @@ class ImmovableProp(GameObject):
             self.height = self.image.get_height()
         except:
             print("Failed to load image:", self.filenames[1])
+
+    def draw(self, surf):
+        pygame.draw.rect(surf, self.color, self.rect)
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
 
 class MovableObject(GameObject):
     def __init__(self, x, y, filename=None, color=(160,82,45)):
@@ -136,7 +141,7 @@ class PaintBar(GameObject):
         self.width = 48
         self.height = 16
     def draw(self, surf):
-        filename = "images/paint_bar_" + str(self.state) + ".png"
+        filename = "images/paintbar/" + str(self.state) + ".png"
         surf.blit(pygame.image.load(filename), (self.x, self.y))
 
 class Level:
@@ -144,6 +149,15 @@ class Level:
         self.index = index
         self.map = map_string
         self.theme = theme
+
+class Nothing(GameObject):
+    def __init__(self):
+        super().__init__(0, 0, color=(255,255,255))
+        self.width = 0
+        self.height = 0
+        self.is_solid = False
+    def draw(self, surf):
+        pass
 
 class Game:
     def __init__(self, width, height, player, level, FPS=60, tile_size=32):
@@ -182,6 +196,8 @@ class Game:
 
                 if ch == '.':   # Air / sky
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
+                elif ch == "'": # No fill
+                    self.grid[r][c] = Nothing()
                 elif ch == '#': # Solid terrain
                     self.grid[r][c] = Terrain(x, y, filename="images/grass.png")
                 elif ch == '0': # Solid terrain
@@ -195,7 +211,7 @@ class Game:
                     self.p.y = y
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == 'i': # Interactive prop
-                    self.grid[r][c] = ImmovableProp(x, y, filenames=("images/flower_dead.png", "images/flower_alive.png"), is_alive=False)
+                    self.grid[r][c] = ImmovableProp(x, y, color=(135,206,235), filenames=("images/flower_dead.png", "images/flower_alive.png"), is_alive=False)
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                     self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
@@ -395,6 +411,7 @@ class Game:
         self.p.state = 1
         self.p.grounded = False
         self.p.direction = 'right'
+        self.paintbar.state = 10
         
         # Reset object on head
         if self.object_on_player_head:
@@ -422,15 +439,16 @@ class Game:
                     if e.key == pygame.K_r:
                         self.reset_level()
                     # Toggle between platformer and top‑down
-                    if e.key == pygame.K_SPACE:
+                    if e.key == pygame.K_SPACE and self.paintbar.state > 2:
                         self.p.state = 2 if self.p.state == 1 else 1
                         self.p.vel_x = 0
                         self.p.vel_y = 0
+                        self.paintbar.state -= 2
                         # Reset velocities of all movable objects
                         for obj in self.movable_objects:
                             obj.vel_x = 0
                             obj.vel_y = 0
-                    if e.key == pygame.K_z and self.p.state == 1:
+                    if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 1:
                         # Calculate player's center position in grid coordinates
                         player_grid_x = (self.p.x + self.p.width // 2) // self.tile_size
                         player_grid_y = (self.p.y + self.p.height // 2) // self.tile_size
@@ -452,6 +470,7 @@ class Game:
                         
                         if prop:
                             prop.paint()
+                            self.paintbar.state -= 1
 
             # Handle continuous input
             keys = pygame.key.get_pressed()
@@ -519,7 +538,7 @@ if __name__ == "__main__":
 0000002................1
 0000002................1
 0000002........i.......1
-00b0000################0
+0b''000################0
 000000000000000000000000
 """
 
