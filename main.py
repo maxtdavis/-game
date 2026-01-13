@@ -128,6 +128,17 @@ class MovableObject(GameObject):
         else:
             pygame.draw.rect(surf, self.color, self.rect)
 
+class PaintBar(GameObject):
+    def __init__(self, x, y, state=10):
+        self.x = x
+        self.y = y
+        self.state = state  # Amount of paint available
+        self.width = 48
+        self.height = 16
+    def draw(self, surf):
+        filename = "images/paint_bar_" + str(self.state) + ".png"
+        surf.blit(pygame.image.load(filename), (self.x, self.y))
+
 class Level:
     def __init__(self, index, map_string, theme="basic"):
         self.index = index
@@ -144,6 +155,7 @@ class Game:
         self.p = player
         self.level = level
         self.tile_size = tile_size
+        self.paintbar = PaintBar(0,0)
 
         # Grid of tiles (background by default)
         self.grid = self.create_grid()
@@ -187,6 +199,10 @@ class Game:
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                     self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
+                elif ch == 'b': # Paint bar
+                    self.grid[r][c] = self.paintbar
+                    self.paintbar.x = x
+                    self.paintbar.y = y
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -503,7 +519,7 @@ if __name__ == "__main__":
 0000002................1
 0000002................1
 0000002........i.......1
-0000000################0
+00b0000################0
 000000000000000000000000
 """
 
