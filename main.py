@@ -245,6 +245,9 @@ class Game:
             yield obj
         for obj in self.movable_objects:
             yield obj
+        # Include goal when in top-down mode (state 2)
+        if self.goal and self.p.state == 2:
+            yield self.goal
 
     def move_axis(self, dx, dy):
         # Horizontal movement and collision resolution
@@ -539,7 +542,7 @@ class Game:
             self.update_movable_objects()
             
             # Check if player reached goal
-            if self.goal and self.p.rect.colliderect(self.goal.rect):
+            if self.goal and self.p.state == 1 and self.p.rect.colliderect(self.goal.rect):
                 self.next_level()
 
             # Draw frame
