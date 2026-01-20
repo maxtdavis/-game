@@ -145,6 +145,12 @@ class PaintBar(GameObject):
         filename = "images/paintbar/" + str(self.state) + ".png"
         surf.blit(pygame.image.load(filename), (self.x, self.y))
 
+class Goal(GameObject):
+    def __init__(self, x, y, filename=None, color=(0,255,0)):
+        super().__init__(x, y, filename, color)
+        self.is_solid = False
+        self.height = 64  # Two blocks tall
+
 class Level:
     def __init__(self, index, map_string, theme="basic"):
         self.index = index
@@ -178,6 +184,8 @@ class Game:
         self.movable_objects = []
         # Track which movable object is on player's head
         self.object_on_player_head = None
+        # Goal object
+        self.goal = None
         # Replace tiles based on level map
         self.load_level()
 
@@ -220,6 +228,9 @@ class Game:
                     self.grid[r][c] = self.paintbar
                     self.paintbar.x = x
                     self.paintbar.y = y
+                elif ch == 'g': # Goal
+                    self.goal = Goal(x, y, color=(0,255,0))
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -403,6 +414,10 @@ class Game:
         for obj in self.movable_objects:
             obj.draw(self.screen)
     
+    def draw_goal(self):
+        if self.goal:
+            self.goal.draw(self.screen)
+    
     def reset_level(self):
         # Reset player position and state
         self.p.x = 0
@@ -421,8 +436,17 @@ class Game:
         
         # Reload the level
         self.movable_objects = []
+        self.goal = None
         self.grid = self.create_grid()
         self.load_level()
+
+    def next_level(self):
+        # Move to next level
+        if self.level.index < len(LEVELS):
+            self.level = Level(self.level.index + 1, LEVELS[self.level.index])
+            self.reset_level()
+        else:
+            print("You've completed all levels!")
 
     def run(self):
         running = True
@@ -513,20 +537,22 @@ class Game:
             # Update physics and collisions
             self.update_player()
             self.update_movable_objects()
+            
+            # Check if player reached goal
+            if self.goal and self.p.rect.colliderect(self.goal.rect):
+                self.next_level()
 
             # Draw frame
             self.screen.fill((255,255,255))
             self.draw_grid()
             self.draw_movable_objects()
+            self.draw_goal()
             self.p.draw(self.screen)
             pygame.display.flip()
 
         pygame.quit()
 
 if __name__ == "__main__":
-    for level in LEVELS:
-        map = level
-    level = Level(1, map)
     player = Player(0,0, filename="images/Character_Idle_1.png")
-    game = Game(WIDTH, HEIGHT, player, level(1, LEVELS))
+    game = Game(WIDTH, HEIGHT, player, Level(1, LEVELS[0]))
     game.run()
