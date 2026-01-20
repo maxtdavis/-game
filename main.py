@@ -1,6 +1,7 @@
 # Added comments throughout explaining purpose and logic of each part.
 
 import pygame
+from levels import LEVELS
 pygame.init()
 
 WIDTH, HEIGHT = 768, 512
@@ -523,26 +524,9 @@ class Game:
         pygame.quit()
 
 if __name__ == "__main__":
-    LEVEL_1_MAP = """
-########################
-2......................1
-2......................1
-2......................1
-2......................1
-2......................1
-2...................M..1
-2.P................####1
-0######....#####.......1
-0000002................1
-0000002.....M..........1
-0000002................1
-0000002................1
-0000002........i.......1
-0b''000################0
-000000000000000000000000
-"""
-
-    level = Level(1, LEVEL_1_MAP)
+    for level in LEVELS:
+        map = level
+    level = Level(1, map)
     player = Player(0,0, filename="images/Character_Idle_1.png")
-    game = Game(WIDTH, HEIGHT, player, level)
+    game = Game(WIDTH, HEIGHT, player, level(1, LEVELS))
     game.run()
