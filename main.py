@@ -451,6 +451,14 @@ class Game:
         else:
             print("You've completed all levels!")
 
+    def previous_level(self):
+        # Move to previous level
+        if self.level.index > 1:
+            self.level = Level(self.level.index - 1, LEVELS[self.level.index - 2])
+            self.reset_level()
+        else:
+            print("You're already on the first level!")
+
     def run(self):
         running = True
         while running:
@@ -466,6 +474,12 @@ class Game:
                     # Reset level
                     if e.key == pygame.K_r:
                         self.reset_level()
+                    # Next level
+                    if e.key == pygame.K_p:
+                        self.next_level()
+                    # Previous level
+                    if e.key == pygame.K_o:
+                        self.previous_level()
                     # Toggle between platformer and top‑down
                     if e.key == pygame.K_SPACE and self.paintbar.state > 2:
                         self.p.state = 2 if self.p.state == 1 else 1
