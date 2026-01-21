@@ -151,6 +151,31 @@ class Goal(GameObject):
         self.is_solid = False
         self.height = 64  # Two blocks tall
 
+class Barrier(GameObject):
+    def __init__(self, x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0)):
+        # state1_color: light red (passable in platformer mode)
+        # state2_color: solid red (solid in top-down mode)
+        super().__init__(x, y, filenames[0], state2_color)
+        self.filenames = filenames
+        self.state1_color = state1_color
+        self.state2_color = state2_color
+        self.is_solid = True
+        self.player = None  # Will be set by Game after creation
+    
+    def set_player(self, player):
+        self.player = player
+    
+    def draw(self, surf):
+        # Update color based on current player state
+        if self.player:
+            self.color = self.state1_color if self.player.state == 1 else self.state2_color
+        
+        # Draw appropriate image or color
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
+        else:
+            pygame.draw.rect(surf, self.color, self.rect)
+
 class Level:
     def __init__(self, index, map_string, theme="basic"):
         self.index = index
@@ -231,6 +256,10 @@ class Game:
                 elif ch == 'g': # Goal
                     self.goal = Goal(x, y, color=(0,255,0))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
+                elif ch == '^': # Barrier (solid in top-down, passable in platformer)
+                    barrier = Barrier(x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0))
+                    barrier.set_player(self.p)
+                    self.grid[r][c] = barrier
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -242,6 +271,9 @@ class Game:
     def all_solid_objects(self):
         # Generator for all solid objects (tiles + movable objects)
         for obj in self.solid_tiles():
+            # Skip Barriers in platformer mode (state 1)
+            if isinstance(obj, Barrier) and self.p.state == 1:
+                continue
             yield obj
         for obj in self.movable_objects:
             yield obj
