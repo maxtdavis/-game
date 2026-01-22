@@ -121,8 +121,6 @@ class MovableObject(GameObject):
         self.gravity = 1
         self.grounded = False
         self.speed = 5
-        # Head riding mechanic
-        self.on_player_head = False
     
     @property
     def rect(self):
@@ -150,6 +148,12 @@ class Goal(GameObject):
         super().__init__(x, y, filename, color)
         self.is_solid = False
         self.height = 64  # Two blocks tall
+
+class TopDownWall(GameObject):
+    def __init__(self, x, y, filename=None, color=(255,0,0)):
+        super().__init__(x, y, filename, color)
+        # Solid only in top-down mode (state 2)
+        self.is_solid = False
 
 class Level:
     def __init__(self, index, map_string, theme="basic"):
@@ -182,10 +186,10 @@ class Game:
         self.grid = self.create_grid()
         # List to store movable objects
         self.movable_objects = []
-        # Track which movable object is on player's head
-        self.object_on_player_head = None
         # Goal object
         self.goal = None
+        # List to store top-down only walls
+        self.topdown_walls = []
         # Replace tiles based on level map
         self.load_level()
 
@@ -231,6 +235,9 @@ class Game:
                 elif ch == 'g': # Goal
                     self.goal = Goal(x, y, color=(0,255,0))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
+                elif ch == '^': # Top-down wall
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
+                    self.topdown_walls.append(TopDownWall(x, y, color=(255,0,0)))
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -248,6 +255,10 @@ class Game:
         # Include goal when in top-down mode (state 2)
         if self.goal and self.p.state == 2:
             yield self.goal
+        # Include top-down walls when in top-down mode (state 2)
+        if self.p.state == 2:
+            for wall in self.topdown_walls:
+                yield wall
 
     def move_axis(self, dx, dy):
         # Horizontal movement and collision resolution
@@ -255,9 +266,6 @@ class Game:
             self.p.x += dx
             pr = self.p.rect
             for obj in self.all_solid_objects():
-                # Skip object on player's head
-                if obj is self.object_on_player_head:
-                    continue
                 if pr.colliderect(obj.rect):
                     # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
@@ -295,9 +303,6 @@ class Game:
             self.p.y += dy
             pr = self.p.rect
             for obj in self.all_solid_objects():
-                # Skip object on player's head
-                if obj is self.object_on_player_head:
-                    continue
                 if pr.colliderect(obj.rect):
                     # Check if it's a movable object
                     if hasattr(obj, 'is_movable') and obj.is_movable:
@@ -359,18 +364,6 @@ class Game:
     def update_movable_objects(self):
         # Update physics for all movable objects
         for obj in self.movable_objects:
-            # Check if object is on player's head
-            if self.p.state == 1 and obj.on_player_head:
-                # Object moves with player
-                obj.x = self.p.x + (self.p.width - obj.width) // 2
-                obj.y = self.p.y - obj.height
-                obj.vel_x = 0
-                obj.vel_y = 0
-                obj.grounded = True
-                continue
-            
-            obj.on_player_head = False
-            
             # Apply gravity in platformer mode
             if self.p.state == 1:
                 obj.vel_y += obj.gravity
@@ -396,9 +389,6 @@ class Game:
                             obj.y = other_obj.y - obj.height
                             obj.vel_y = 0
                             obj.grounded = True
-                            if self.p.state == 1 and other_obj is self.p:
-                                obj.on_player_head = True
-                                self.object_on_player_head = obj
                         else:  # moving up
                             obj.y = other_obj.y + other_obj.height
                             obj.vel_y = 0
@@ -421,6 +411,10 @@ class Game:
         if self.goal:
             self.goal.draw(self.screen)
     
+    def draw_topdown_walls(self):
+        for wall in self.topdown_walls:
+            wall.draw(self.screen)
+    
     def reset_level(self):
         # Reset player position and state
         self.p.x = 0
@@ -432,14 +426,10 @@ class Game:
         self.p.direction = 'right'
         self.paintbar.state = 10
         
-        # Reset object on head
-        if self.object_on_player_head:
-            self.object_on_player_head.on_player_head = False
-            self.object_on_player_head = None
-        
         # Reload the level
         self.movable_objects = []
         self.goal = None
+        self.topdown_walls = []
         self.grid = self.create_grid()
         self.load_level()
 
@@ -506,14 +496,8 @@ class Game:
             if self.p.state == 1:
                 # Left/right input
                 if keys[pygame.K_UP] and self.p.grounded:
-                    # If object is on player's head, eject it instead of jumping
-                    if self.object_on_player_head:
-                        self.object_on_player_head.on_player_head = False
-                        self.object_on_player_head.vel_y = -10
-                        self.object_on_player_head = None
-                    else:
-                        # Jump only in platformer mode when not carrying
-                        self.p.vel_y = self.p.jump_strength
+                    # Jump only in platformer mode
+                    self.p.vel_y = self.p.jump_strength
                 elif keys[pygame.K_RIGHT]:
                     self.p.vel_x = self.p.speed
                     self.p.direction = 'right'
@@ -549,6 +533,7 @@ class Game:
             self.screen.fill((255,255,255))
             self.draw_grid()
             self.draw_movable_objects()
+            self.draw_topdown_walls()
             self.draw_goal()
             self.p.draw(self.screen)
             pygame.display.flip()
