@@ -29,6 +29,7 @@ class Player:
         self.grounded = False
         # Idle animation
         self.idle_right_frames = ["images/character/idle_right/1.png", "images/character/idle_right/2.png", "images/character/idle_right/3.png"]
+        self.idle_left_frames = ["images/character/idle_left/1.png", "images/character/idle_left/2.png", "images/character/idle_left/3.png"]
         self.animation_frame = 0
         self.animation_counter = 0
         self.animation_speed = 10  # frames per sprite
@@ -42,7 +43,7 @@ class Player:
         # Check if player is idle (not moving)
         is_idle = self.vel_x == 0 and self.vel_y == 0
         
-        # Draw idle animation if idle and facing right
+        # Draw idle animation if idle
         if is_idle and self.direction == 'right':
             self.animation_counter += 1
             if self.animation_counter >= self.animation_speed:
@@ -51,6 +52,18 @@ class Player:
             
             try:
                 image = pygame.image.load(self.idle_right_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        elif is_idle and self.direction == 'left':
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.idle_left_frames)
+            
+            try:
+                image = pygame.image.load(self.idle_left_frames[self.animation_frame])
                 surf.blit(image, (self.x, self.y))
                 return
             except:
@@ -134,6 +147,28 @@ class ImmovableProp(GameObject):
         pygame.draw.rect(surf, self.color, self.rect)
         if self.image:
             surf.blit(self.image, (self.x, self.y))
+
+class Paint(GameObject):
+    def __init__(self, x, y, direction, filename=None):
+        super().__init__(x, y, filename, color=(0, 0, 255))
+        self.width = 8
+        self.height = 8
+        self.direction = direction
+        self.vel_x = 10 if direction == 'right' else -10
+        self.speed = 10
+        self.distance_traveled = 0
+        self.max_distance = 160  # 5 blocks
+    
+    def update(self):
+        # Move projectile (no friction)
+        self.x += self.vel_x
+        self.distance_traveled += abs(self.vel_x)
+    
+    def draw(self, surf):
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
+        else:
+            pygame.draw.rect(surf, self.color, self.rect)
 
 class MovableObject(GameObject):
     def __init__(self, x, y, filename=None, color=(160,82,45)):
@@ -250,6 +285,8 @@ class Game:
         self.grid = self.create_grid()
         # List to store movable objects
         self.movable_objects = []
+        # List to store paint projectiles
+        self.paint_projectiles = []
         # Goal object
         self.goal = None
         # Replace tiles based on level map
@@ -457,6 +494,47 @@ class Game:
             if obj.grounded:
                 obj.vel_x *= 0.9
 
+    def update_paint_projectiles(self):
+        # Update all paint projectiles
+        projectiles_to_remove = []
+        for paint in self.paint_projectiles:
+            # Update paint position
+            paint.update()
+            
+            # Check if projectile has traveled too far
+            if paint.distance_traveled >= paint.max_distance:
+                projectiles_to_remove.append(paint)
+                continue
+            
+            # Check collision with all solid objects and dead flowers in grid
+            collision_found = False
+            
+            # First check all objects in grid for dead flowers
+            for row in self.grid:
+                for obj in row:
+                    if paint.rect.colliderect(obj.rect):
+                        if isinstance(obj, ImmovableProp) and not obj.is_alive:
+                            obj.paint()
+                        if hasattr(obj, 'is_solid') and obj.is_solid:
+                            collision_found = True
+                        break
+                if collision_found:
+                    break
+            
+            # Then check movable objects and other solid objects
+            if not collision_found:
+                for obj in self.all_solid_objects():
+                    if paint.rect.colliderect(obj.rect):
+                        collision_found = True
+                        break
+            
+            if collision_found:
+                projectiles_to_remove.append(paint)
+        
+        # Remove collided or expired projectiles
+        for paint in projectiles_to_remove:
+            self.paint_projectiles.remove(paint)
+
     def draw_grid(self):
         for row in self.grid:
             for t in row:
@@ -465,6 +543,10 @@ class Game:
     def draw_movable_objects(self):
         for obj in self.movable_objects:
             obj.draw(self.screen)
+    
+    def draw_paint_projectiles(self):
+        for paint in self.paint_projectiles:
+            paint.draw(self.screen)
     
     def draw_goal(self):
         if self.goal:
@@ -500,6 +582,7 @@ class Game:
         
         # Reload the level
         self.movable_objects = []
+        self.paint_projectiles = []
         self.goal = None
         self.grid = self.create_grid()
         self.load_level()
@@ -551,29 +634,11 @@ class Game:
                         for obj in self.movable_objects:
                             obj.vel_x = 0
                             obj.vel_y = 0
-                    if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 1:
-                        # Calculate player's center position in grid coordinates (subtract UI_HEIGHT offset)
-                        player_grid_x = (self.p.x + self.p.width // 2) // self.tile_size
-                        player_grid_y = (self.p.y - self.UI_HEIGHT + self.p.height // 2) // self.tile_size
-                        
-                        # Scan for nearby unmovable props to paint
-                        prop = None
-                        if self.p.direction == 'right':
-                            # Check tile to the right
-                            check_x = player_grid_x + 1
-                            if 0 <= check_x < len(self.grid[0]) and 0 <= player_grid_y < len(self.grid):
-                                if isinstance(self.grid[player_grid_y][check_x],ImmovableProp):
-                                    prop = self.grid[player_grid_y][check_x]
-                        elif self.p.direction == 'left':
-                            # Check tile to the left
-                            check_x = player_grid_x - 1
-                            if 0 <= check_x < len(self.grid[0]) and 0 <= player_grid_y < len(self.grid):
-                                if isinstance(self.grid[player_grid_y][check_x], ImmovableProp):
-                                    prop = self.grid[player_grid_y][check_x]
-                        
-                        if prop:
-                            prop.paint()
-                            self.paintbar.state -= 1
+                    if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 0 and len(self.paint_projectiles) == 0:
+                        # Create paint projectile
+                        paint = Paint(self.p.x + self.p.width // 2, self.p.y + self.p.height // 2, self.p.direction)
+                        self.paint_projectiles.append(paint)
+                        self.paintbar.state -= 1
 
             # Handle continuous input
             keys = pygame.key.get_pressed()
@@ -609,6 +674,7 @@ class Game:
             # Update physics and collisions
             self.update_player()
             self.update_movable_objects()
+            self.update_paint_projectiles()
             
             # Check if player reached goal
             if self.goal and self.p.state == 1 and self.p.rect.colliderect(self.goal.rect):
@@ -618,6 +684,7 @@ class Game:
             self.screen.fill((255,255,255))
             self.draw_grid()
             self.draw_movable_objects()
+            self.draw_paint_projectiles()
             self.draw_goal()
             self.p.draw(self.screen)
             self.draw_ui()
