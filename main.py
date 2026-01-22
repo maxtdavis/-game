@@ -27,6 +27,11 @@ class Player:
         # State: 1 = platformer, 2 = top‑down
         self.state = 1
         self.grounded = False
+        # Idle animation
+        self.idle_right_frames = ["images/character/idle_right/1.png", "images/character/idle_right/2.png", "images/character/idle_right/3.png"]
+        self.animation_frame = 0
+        self.animation_counter = 0
+        self.animation_speed = 10  # frames per sprite
 
     @property
     def rect(self):
@@ -34,7 +39,28 @@ class Player:
         return pygame.Rect(self.x, self.y, self.width, self.height)
 
     def draw(self, surf):
-        # Draw player
+        # Check if player is idle (not moving)
+        is_idle = self.vel_x == 0 and self.vel_y == 0
+        
+        # Draw idle animation if idle and facing right
+        if is_idle and self.direction == 'right':
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.idle_right_frames)
+            
+            try:
+                image = pygame.image.load(self.idle_right_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        else:
+            # Reset animation when moving
+            self.animation_counter = 0
+            self.animation_frame = 0
+        
+        # Draw player with default sprite or color
         if self.filename:
             try:
                 image = pygame.image.load(self.filename)
