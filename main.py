@@ -4,7 +4,7 @@ import pygame
 from levels import LEVELS
 pygame.init()
 
-WIDTH, HEIGHT = 768, 512
+WIDTH, HEIGHT = 768, 576
 
 class Player:
     def __init__(self, x, y, color=(0,128,255), filename=None):
@@ -61,7 +61,7 @@ class GameObject:
                 self.width = self.image.get_width()
                 self.height = self.image.get_height()
             except:
-                pass
+                print("Failed to load image:", filename)
 
     @property
     def rect(self):
@@ -149,11 +149,30 @@ class Goal(GameObject):
         self.is_solid = False
         self.height = 64  # Two blocks tall
 
-class TopDownWall(GameObject):
-    def __init__(self, x, y, filename=None, color=(255,0,0)):
-        super().__init__(x, y, filename, color)
-        # Solid only in top-down mode (state 2)
-        self.is_solid = False
+class Barrier(GameObject):
+    def __init__(self, x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0)):
+        # state1_color: light red (passable in platformer mode)
+        # state2_color: solid red (solid in top-down mode)
+        super().__init__(x, y, filenames[0], state2_color)
+        self.filenames = filenames
+        self.state1_color = state1_color
+        self.state2_color = state2_color
+        self.is_solid = True
+        self.player = None  # Will be set by Game after creation
+    
+    def set_player(self, player):
+        self.player = player
+    
+    def draw(self, surf):
+        # Update color based on current player state
+        if self.player:
+            self.color = self.state1_color if self.player.state == 1 else self.state2_color
+        
+        # Draw appropriate image or color
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
+        else:
+            pygame.draw.rect(surf, self.color, self.rect)
 
 class Level:
     def __init__(self, index, map_string, theme="basic"):
@@ -180,7 +199,11 @@ class Game:
         self.p = player
         self.level = level
         self.tile_size = tile_size
+        self.UI_HEIGHT = 64  # Reserved space at top for UI
+        self.attempts = 0
         self.paintbar = PaintBar(0,0)
+        self.font_large = pygame.font.Font(None, 28)
+        self.font_small = pygame.font.Font(None, 20)
 
         # Grid of tiles (background by default)
         self.grid = self.create_grid()
@@ -194,18 +217,18 @@ class Game:
         self.load_level()
 
     def create_grid(self):
-        # Basic grid filled with background tiles
-        cols = self.width // self.tile_size
-        rows = self.height // self.tile_size
-        return [[Background(c*self.tile_size, r*self.tile_size) for c in range(cols)] for r in range(rows)]
+        # Basic grid - will be sized based on level map
+        return []
 
     def load_level(self):
         # Parse level map string and place tiles accordingly
         lines = self.level.map.strip().split("\n")
+        # Create grid based on actual level dimensions, offset by UI_HEIGHT
+        self.grid = [[Background(c*self.tile_size, r*self.tile_size + self.UI_HEIGHT) for c in range(len(line))] for r, line in enumerate(lines)]
         for r, line in enumerate(lines):
             for c, ch in enumerate(line):
                 x = c * self.tile_size
-                y = r * self.tile_size
+                y = r * self.tile_size + self.UI_HEIGHT
 
                 if ch == '.':   # Air / sky
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
@@ -227,17 +250,14 @@ class Game:
                     self.grid[r][c] = ImmovableProp(x, y, color=(135,206,235), filenames=("images/flower_dead.png", "images/flower_alive.png"), is_alive=False)
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
-                    self.movable_objects.append(MovableObject(x, y, filename="images/crate.png"))
-                elif ch == 'b': # Paint bar
-                    self.grid[r][c] = self.paintbar
-                    self.paintbar.x = x
-                    self.paintbar.y = y
+                    self.movable_objects.append(MovableObject(x, y, filename="images/barrel.png"))
                 elif ch == 'g': # Goal
                     self.goal = Goal(x, y, color=(0,255,0))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
-                elif ch == '^': # Top-down wall
-                    self.grid[r][c] = Background(x, y, color=(135,206,235))
-                    self.topdown_walls.append(TopDownWall(x, y, color=(255,0,0)))
+                elif ch == '^': # Barrier (solid in top-down, passable in platformer)
+                    barrier = Barrier(x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0))
+                    barrier.set_player(self.p)
+                    self.grid[r][c] = barrier
 
     def solid_tiles(self):
         # Generator for tiles that block movement
@@ -249,6 +269,9 @@ class Game:
     def all_solid_objects(self):
         # Generator for all solid objects (tiles + movable objects)
         for obj in self.solid_tiles():
+            # Skip Barriers in platformer mode (state 1)
+            if isinstance(obj, Barrier) and self.p.state == 1:
+                continue
             yield obj
         for obj in self.movable_objects:
             yield obj
@@ -411,14 +434,35 @@ class Game:
         if self.goal:
             self.goal.draw(self.screen)
     
-    def draw_topdown_walls(self):
-        for wall in self.topdown_walls:
-            wall.draw(self.screen)
+    def draw_ui(self):
+        # Draw gradient-like UI background
+        pygame.draw.rect(self.screen, (45, 45, 55), (0, 0, self.width, self.UI_HEIGHT))
+        
+        # Draw bottom border line
+        pygame.draw.line(self.screen, (20, 20, 30), (0, self.UI_HEIGHT - 1), (self.width, self.UI_HEIGHT - 1), 3)
+        
+        # Draw paint bar section with label
+        self.paintbar.x = 10
+        self.paintbar.y = 18
+        self.paintbar.draw(self.screen)
+        paint_label = self.font_small.render("Paint", True, (200, 200, 200))
+        self.screen.blit(paint_label, (10, 40))
+        
+        # Draw level number
+        level_text = self.font_large.render(f"Level {self.level.index}", True, (255, 200, 100))
+        level_rect = level_text.get_rect(center=(self.width // 2, 32))
+        self.screen.blit(level_text, level_rect)
+        
+        # Draw attempt count on the right
+        attempts_text = self.font_small.render(f"Attempts: {self.attempts}", True, (150, 200, 255))
+        self.screen.blit(attempts_text, (self.width - 200, 22))
     
     def reset_level(self):
+        # Increment attempts counter
+        self.attempts += 1
         # Reset player position and state
         self.p.x = 0
-        self.p.y = 0
+        self.p.y = self.UI_HEIGHT
         self.p.vel_x = 0
         self.p.vel_y = 0
         self.p.state = 1
@@ -441,6 +485,14 @@ class Game:
         else:
             print("You've completed all levels!")
 
+    def previous_level(self):
+        # Move to previous level
+        if self.level.index > 1:
+            self.level = Level(self.level.index - 1, LEVELS[self.level.index - 2])
+            self.reset_level()
+        else:
+            print("You're already on the first level!")
+
     def run(self):
         running = True
         while running:
@@ -456,6 +508,12 @@ class Game:
                     # Reset level
                     if e.key == pygame.K_r:
                         self.reset_level()
+                    # Next level
+                    if e.key == pygame.K_p:
+                        self.next_level()
+                    # Previous level
+                    if e.key == pygame.K_o:
+                        self.previous_level()
                     # Toggle between platformer and top‑down
                     if e.key == pygame.K_SPACE and self.paintbar.state > 2:
                         self.p.state = 2 if self.p.state == 1 else 1
@@ -467,9 +525,9 @@ class Game:
                             obj.vel_x = 0
                             obj.vel_y = 0
                     if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 1:
-                        # Calculate player's center position in grid coordinates
+                        # Calculate player's center position in grid coordinates (subtract UI_HEIGHT offset)
                         player_grid_x = (self.p.x + self.p.width // 2) // self.tile_size
-                        player_grid_y = (self.p.y + self.p.height // 2) // self.tile_size
+                        player_grid_y = (self.p.y - self.UI_HEIGHT + self.p.height // 2) // self.tile_size
                         
                         # Scan for nearby unmovable props to paint
                         prop = None
@@ -536,6 +594,7 @@ class Game:
             self.draw_topdown_walls()
             self.draw_goal()
             self.p.draw(self.screen)
+            self.draw_ui()
             pygame.display.flip()
 
         pygame.quit()
