@@ -177,6 +177,8 @@ class Goal(GameObject):
 
 class Barrier(GameObject):
     def __init__(self, x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0)):
+        # filenames[0]: off animation (passable in platformer mode)
+        # filenames[1]: on animation (solid in top-down mode)
         # state1_color: light red (passable in platformer mode)
         # state2_color: solid red (solid in top-down mode)
         super().__init__(x, y, filenames[0], state2_color)
@@ -190,9 +192,24 @@ class Barrier(GameObject):
         self.player = player
     
     def draw(self, surf):
-        # Update color based on current player state
+        # Update image and color based on current player state
         if self.player:
-            self.color = self.state1_color if self.player.state == 1 else self.state2_color
+            if self.player.state == 1:
+                # Platformer mode: off animation (passable)
+                self.color = self.state1_color
+                if self.filenames[0]:
+                    try:
+                        self.image = pygame.image.load(self.filenames[0])
+                    except:
+                        self.image = None
+            else:
+                # Top-down mode: on animation (solid)
+                self.color = self.state2_color
+                if self.filenames[1]:
+                    try:
+                        self.image = pygame.image.load(self.filenames[1])
+                    except:
+                        self.image = None
         
         # Draw appropriate image or color
         if self.image:
@@ -278,7 +295,8 @@ class Game:
                     self.goal = Goal(x, y, color=(0,255,0))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == '^': # Barrier (solid in top-down, passable in platformer)
-                    barrier = Barrier(x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0))
+                    self.grid[r][c] = Background(x, y, color=(135,206,235))
+                    barrier = Barrier(x, y, filenames=('images/barrier_off.png', 'images/barrier_on.png'), state1_color=(255,200,200), state2_color=(255,0,0))
                     barrier.set_player(self.p)
                     self.grid[r][c] = barrier
 
