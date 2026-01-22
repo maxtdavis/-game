@@ -211,11 +211,10 @@ class Barrier(GameObject):
                     except:
                         self.image = None
         
-        # Draw appropriate image or color
+        # Draw background color first, then image on top
+        pygame.draw.rect(surf, self.color, self.rect)
         if self.image:
             surf.blit(self.image, (self.x, self.y))
-        else:
-            pygame.draw.rect(surf, self.color, self.rect)
 
 class Level:
     def __init__(self, index, map_string, theme="basic"):
@@ -295,8 +294,7 @@ class Game:
                     self.goal = Goal(x, y, color=(0,255,0))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == '^': # Barrier (solid in top-down, passable in platformer)
-                    self.grid[r][c] = Background(x, y, color=(135,206,235))
-                    barrier = Barrier(x, y, filenames=('images/barrier_off.png', 'images/barrier_on.png'), state1_color=(255,200,200), state2_color=(255,0,0))
+                    barrier = Barrier(x, y, filenames=('images/barrier_off.png', 'images/barrier_on.png'), state1_color=(135,206,235), state2_color=(255,0,0))
                     barrier.set_player(self.p)
                     self.grid[r][c] = barrier
 
