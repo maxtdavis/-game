@@ -158,16 +158,29 @@ class Paint(GameObject):
         self.speed = 10
         self.distance_traveled = 0
         self.max_distance = 160  # 5 blocks
+        # Animation properties
+        self.current_frame = 1
+        self.frame_counter = 0
+        self.frames_per_image = 1  # Change image every frame
     
     def update(self):
         # Move projectile (no friction)
         self.x += self.vel_x
         self.distance_traveled += abs(self.vel_x)
+        # Update animation frame
+        self.frame_counter += 1
+        if self.frame_counter >= self.frames_per_image:
+            self.frame_counter = 0
+            self.current_frame += 1
+            if self.current_frame > 18:
+                self.current_frame = 1
     
     def draw(self, surf):
-        if self.image:
-            surf.blit(self.image, (self.x, self.y))
-        else:
+        filename = f"images/paintball/{self.current_frame}.png"
+        try:
+            surf.blit(pygame.image.load(filename), (self.x, self.y))
+        except FileNotFoundError:
+            # Fallback to drawing a circle if image not found
             pygame.draw.rect(surf, self.color, self.rect)
 
 class MovableObject(GameObject):
@@ -631,16 +644,16 @@ class Game:
                         self.p.state = 2 if self.p.state == 1 else 1
                         self.p.vel_x = 0
                         self.p.vel_y = 0
-                        self.paintbar.state -= 2
+                        self.paintbar.state = max(1, self.paintbar.state - 2)
                         # Reset velocities of all movable objects
                         for obj in self.movable_objects:
                             obj.vel_x = 0
                             obj.vel_y = 0
-                    if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 0 and len(self.paint_projectiles) == 0:
+                    if e.key == pygame.K_z and self.p.state == 1 and self.paintbar.state > 1 and len(self.paint_projectiles) == 0:
                         # Create paint projectile
                         paint = Paint(self.p.x + self.p.width // 2, self.p.y + self.p.height // 2, self.p.direction)
                         self.paint_projectiles.append(paint)
-                        self.paintbar.state -= 1
+                        self.paintbar.state = max(1, self.paintbar.state - 1)
 
             # Handle continuous input
             keys = pygame.key.get_pressed()
