@@ -258,7 +258,7 @@ class Game:
                 elif ch == "'": # No fill
                     self.grid[r][c] = Nothing()
                 elif ch == '#': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/grass.png")
+                    self.grid[r][c] = Terrain(x, y, filename="images/grass_light.png")
                 elif ch == '0': # Solid terrain
                     self.grid[r][c] = Terrain(x, y, filename="images/dirt.png")
                 elif ch == '1': # Solid terrain
