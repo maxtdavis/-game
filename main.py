@@ -200,7 +200,6 @@ class Game:
         self.level = level
         self.tile_size = tile_size
         self.UI_HEIGHT = 64  # Reserved space at top for UI
-        self.attempts = 0
         self.paintbar = PaintBar(0,0)
         self.font_large = pygame.font.Font(None, 28)
         self.font_small = pygame.font.Font(None, 20)
@@ -211,8 +210,6 @@ class Game:
         self.movable_objects = []
         # Goal object
         self.goal = None
-        # List to store top-down only walls
-        self.topdown_walls = []
         # Replace tiles based on level map
         self.load_level()
 
@@ -278,10 +275,7 @@ class Game:
         # Include goal when in top-down mode (state 2)
         if self.goal and self.p.state == 2:
             yield self.goal
-        # Include top-down walls when in top-down mode (state 2)
-        if self.p.state == 2:
-            for wall in self.topdown_walls:
-                yield wall
+
 
     def move_axis(self, dx, dy):
         # Horizontal movement and collision resolution
@@ -441,25 +435,17 @@ class Game:
         # Draw bottom border line
         pygame.draw.line(self.screen, (20, 20, 30), (0, self.UI_HEIGHT - 1), (self.width, self.UI_HEIGHT - 1), 3)
         
-        # Draw paint bar section with label
+        # Draw paint bar
         self.paintbar.x = 10
         self.paintbar.y = 18
         self.paintbar.draw(self.screen)
-        paint_label = self.font_small.render("Paint", True, (200, 200, 200))
-        self.screen.blit(paint_label, (10, 40))
         
         # Draw level number
         level_text = self.font_large.render(f"Level {self.level.index}", True, (255, 200, 100))
         level_rect = level_text.get_rect(center=(self.width // 2, 32))
         self.screen.blit(level_text, level_rect)
-        
-        # Draw attempt count on the right
-        attempts_text = self.font_small.render(f"Attempts: {self.attempts}", True, (150, 200, 255))
-        self.screen.blit(attempts_text, (self.width - 200, 22))
     
     def reset_level(self):
-        # Increment attempts counter
-        self.attempts += 1
         # Reset player position and state
         self.p.x = 0
         self.p.y = self.UI_HEIGHT
@@ -473,7 +459,6 @@ class Game:
         # Reload the level
         self.movable_objects = []
         self.goal = None
-        self.topdown_walls = []
         self.grid = self.create_grid()
         self.load_level()
 
@@ -591,7 +576,6 @@ class Game:
             self.screen.fill((255,255,255))
             self.draw_grid()
             self.draw_movable_objects()
-            self.draw_topdown_walls()
             self.draw_goal()
             self.p.draw(self.screen)
             self.draw_ui()
