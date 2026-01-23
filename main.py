@@ -118,10 +118,55 @@ class Background(GameObject):
         self.is_solid = False
 
 class Terrain(GameObject):
-    def __init__(self, x, y, filename=None, color=(139,69,19)):
-        super().__init__(x, y, filename, color)
+    def __init__(self, x, y, row=None, col=None, color=(139,69,19)):
+        super().__init__(x, y, None, color)
         # Solid tiles collide with the player
         self.is_solid = True
+        self.row = row
+        self.col = col
+        self.placement = "0000"
+    
+    def calculate_placement(self, grid):
+        """Calculate placement based on neighboring terrain blocks.
+        Placement is a 4-digit binary string: above, right, below, left
+        """
+        if self.row is None or self.col is None:
+            self.placement = "0000"
+            return
+        
+        # Get grid dimensions for bounds checking
+        grid_height = len(grid)
+        grid_width = len(grid[0]) if grid_height > 0 else 0
+        
+        # Check each direction with bounds checking
+        # Check above (row - 1)
+        above = "1" if (self.row > 0 and isinstance(grid[self.row-1][self.col], Terrain)) else "0"
+        # Check right (col + 1)
+        right = "1" if (self.col < grid_width - 1 and isinstance(grid[self.row][self.col+1], Terrain)) else "0"
+        # Check below (row + 1)
+        below = "1" if (self.row < grid_height - 1 and isinstance(grid[self.row+1][self.col], Terrain)) else "0"
+        # Check left (col - 1)
+        left = "1" if (self.col > 0 and isinstance(grid[self.row][self.col-1], Terrain)) else "0"
+        
+        self.placement = above + right + below + left
+    
+    def load_image(self):
+        """Load image based on placement, fallback to brown square if not found"""
+        filename = f"images/themes/standard/{self.placement}.png"
+        try:
+            self.image = pygame.image.load(filename)
+            self.width = self.image.get_width()
+            self.height = self.image.get_height()
+        except:
+            # Fallback: will draw brown square in draw method
+            self.image = None
+    
+    def draw(self, surf):
+        if self.image:
+            surf.blit(self.image, (self.x, self.y))
+        else:
+            # Draw brown fallback square
+            pygame.draw.rect(surf, (139, 69, 19), self.rect)
 
 class ImmovableProp(GameObject):
     def __init__(self, x, y, filenames=(None, None), color=(200,200,100), is_alive=False):
@@ -324,15 +369,7 @@ class Game:
                 elif ch == "'": # No fill
                     self.grid[r][c] = Nothing()
                 elif ch == '#': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/grass_light.png")
-                elif ch == '*': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/grassflower_light.png")
-                elif ch == '0': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/dirt.png")
-                elif ch == '1': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/dirt_edge_left.png")
-                elif ch == '2': # Solid terrain
-                    self.grid[r][c] = Terrain(x, y, filename="images/dirt_edge_right.png")
+                    self.grid[r][c] = Terrain(x, y, row=r, col=c)
                 elif ch == 'P': # Player spawn
                     self.p.x = x
                     self.p.y = y
@@ -349,6 +386,13 @@ class Game:
                     barrier = Barrier(x, y, filenames=('images/barrier_off.png', 'images/barrier_on.png'), state1_color=(135,206,235), state2_color=(255,0,0))
                     barrier.set_player(self.p)
                     self.grid[r][c] = barrier
+        
+        # After grid is fully built, calculate placement and load images for all terrain blocks
+        for row in self.grid:
+            for tile in row:
+                if isinstance(tile, Terrain):
+                    tile.calculate_placement(self.grid)
+                    tile.load_image()
 
     def solid_tiles(self):
         # Generator for tiles that block movement
