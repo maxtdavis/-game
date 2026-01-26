@@ -30,6 +30,8 @@ class Player:
         # Idle animation
         self.idle_right_frames = ["images/character/idle_right/1.png", "images/character/idle_right/2.png", "images/character/idle_right/3.png"]
         self.idle_left_frames = ["images/character/idle_left/1.png", "images/character/idle_left/2.png", "images/character/idle_left/3.png"]
+        self.run_right_frames = ["images/character/run_right/1.png", "images/character/run_right/2.png", "images/character/run_right/3.png", "images/character/run_right/4.png"]
+        self.run_left_frames = ["images/character/run_left/1.png", "images/character/run_left/2.png", "images/character/run_left/3.png", "images/character/run_left/4.png"]
         self.animation_frame = 0
         self.animation_counter = 0
         self.animation_speed = 10  # frames per sprite
@@ -64,6 +66,30 @@ class Player:
             
             try:
                 image = pygame.image.load(self.idle_left_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        elif not is_idle and self.grounded and self.direction == 'right':
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.run_right_frames)
+            
+            try:
+                image = pygame.image.load(self.run_right_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        elif not is_idle and self.grounded and self.direction == 'left':
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.run_left_frames)
+
+            try:
+                image = pygame.image.load(self.run_left_frames[self.animation_frame])
                 surf.blit(image, (self.x, self.y))
                 return
             except:
