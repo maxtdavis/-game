@@ -34,7 +34,7 @@ class Player:
         self.run_left_frames = ["images/character/run_left/1.png", "images/character/run_left/2.png", "images/character/run_left/3.png", "images/character/run_left/4.png"]
         self.animation_frame = 0
         self.animation_counter = 0
-        self.animation_speed = 10  # frames per sprite
+        self.animation_speed = 5  # frames per sprite
 
     @property
     def rect(self):
@@ -48,7 +48,7 @@ class Player:
         # Draw idle animation if idle
         if is_idle and self.direction == 'right':
             self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
+            if self.animation_counter >= self.animation_speed * 2:
                 self.animation_counter = 0
                 self.animation_frame = (self.animation_frame + 1) % len(self.idle_right_frames)
             
@@ -60,7 +60,7 @@ class Player:
                 pass
         elif is_idle and self.direction == 'left':
             self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
+            if self.animation_counter >= self.animation_speed * 2:
                 self.animation_counter = 0
                 self.animation_frame = (self.animation_frame + 1) % len(self.idle_left_frames)
             
