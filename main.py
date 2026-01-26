@@ -142,6 +142,8 @@ class Background(GameObject):
     def __init__(self, x, y, filename=None, color=(200,200,200)):
         super().__init__(x, y, filename, color)
         self.is_solid = False
+    def draw(self, surf):
+        pass
 
 class Terrain(GameObject):
     def __init__(self, x, y, row=None, col=None, color=(139,69,19)):
@@ -188,8 +190,6 @@ class Terrain(GameObject):
             self.image = None
     
     def draw(self, surf):
-        pygame.draw.rect(surf, (135,206,235), self.rect)
-        
         if self.image:
             surf.blit(self.image, (self.x, self.y))
         else:
@@ -357,6 +357,7 @@ class Game:
         self.paintbar = PaintBar(0,0)
         self.font_large = pygame.font.Font(None, 28)
         self.font_small = pygame.font.Font(None, 20)
+        self.background = "images/background.jpg"
 
         # Grid of tiles (background by default)
         self.grid = self.create_grid()
@@ -612,6 +613,7 @@ class Game:
             self.paint_projectiles.remove(paint)
 
     def draw_grid(self):
+        self.screen.blit(pygame.image.load(self.background), (0,0))
         for row in self.grid:
             for t in row:
                 t.draw(self.screen)
