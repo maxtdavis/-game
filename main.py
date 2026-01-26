@@ -769,6 +769,6 @@ class Game:
         pygame.quit()
 
 if __name__ == "__main__":
-    player = Player(0,0, filename="images/Character_Idle_1.png")
+    player = Player(0,0)
     game = Game(WIDTH, HEIGHT, player, Level(1, LEVELS[0]))
     game.run()
