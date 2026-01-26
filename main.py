@@ -217,7 +217,6 @@ class ImmovableProp(GameObject):
             print("Failed to load image:", self.filenames[1])
 
     def draw(self, surf):
-        pygame.draw.rect(surf, self.color, self.rect)
         if self.image:
             surf.blit(self.image, (self.x, self.y))
 
@@ -333,7 +332,6 @@ class Barrier(GameObject):
                         self.image = None
         
         # Draw background color first, then image on top
-        pygame.draw.rect(surf, self.color, self.rect)
         if self.image:
             surf.blit(self.image, (self.x, self.y))
 
