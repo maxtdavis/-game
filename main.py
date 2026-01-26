@@ -152,7 +152,7 @@ class Terrain(GameObject):
     
     def load_image(self):
         """Load image based on placement, fallback to brown square if not found"""
-        filename = f"images/themes/cave/{self.placement}.png"
+        filename = f"images/themes/standard/{self.placement}.png"
         try:
             self.image = pygame.image.load(filename)
             self.width = self.image.get_width()
@@ -162,6 +162,8 @@ class Terrain(GameObject):
             self.image = None
     
     def draw(self, surf):
+        pygame.draw.rect(surf, (135,206,235), self.rect)
+        
         if self.image:
             surf.blit(self.image, (self.x, self.y))
         else:
@@ -315,15 +317,6 @@ class Level:
         self.map = map_string
         self.theme = theme
 
-class Nothing(GameObject):
-    def __init__(self):
-        super().__init__(0, 0, color=(255,255,255))
-        self.width = 0
-        self.height = 0
-        self.is_solid = False
-    def draw(self, surf):
-        pass
-
 class Game:
     def __init__(self, width, height, player, level, FPS=60, tile_size=32):
         self.width = width
@@ -366,8 +359,6 @@ class Game:
 
                 if ch == '.':   # Air / sky
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
-                elif ch == "'": # No fill
-                    self.grid[r][c] = Nothing()
                 elif ch == '#': # Solid terrain
                     self.grid[r][c] = Terrain(x, y, row=r, col=c)
                 elif ch == 'P': # Player spawn
