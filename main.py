@@ -32,6 +32,8 @@ class Player:
         self.idle_left_frames = ["images/character/idle_left/1.png", "images/character/idle_left/2.png", "images/character/idle_left/3.png"]
         self.run_right_frames = ["images/character/run_right/1.png", "images/character/run_right/2.png", "images/character/run_right/3.png", "images/character/run_right/4.png"]
         self.run_left_frames = ["images/character/run_left/1.png", "images/character/run_left/2.png", "images/character/run_left/3.png", "images/character/run_left/4.png"]
+        self.fall_right_frames = ["images/character/fall_right/1.png", "images/character/fall_right/2.png"]
+        self.fall_left_frames = ["images/character/fall_left/1.png", "images/character/fall_left/2.png"]
         self.animation_frame = 0
         self.animation_counter = 0
         self.animation_speed = 5  # frames per sprite
@@ -90,6 +92,28 @@ class Player:
 
             try:
                 image = pygame.image.load(self.run_left_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        elif not is_idle and not self.grounded and self.direction == 'right' and self.state == 1 and self.vel_y > 0:
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.fall_right_frames)
+            try:
+                image = pygame.image.load(self.fall_right_frames[self.animation_frame])
+                surf.blit(image, (self.x, self.y))
+                return
+            except:
+                pass
+        elif not is_idle and not self.grounded and self.direction == 'left' and self.state == 1 and self.vel_y > 0:
+            self.animation_counter += 1
+            if self.animation_counter >= self.animation_speed:
+                self.animation_counter = 0
+                self.animation_frame = (self.animation_frame + 1) % len(self.fall_left_frames)
+            try:
+                image = pygame.image.load(self.fall_left_frames[self.animation_frame])
                 surf.blit(image, (self.x, self.y))
                 return
             except:
