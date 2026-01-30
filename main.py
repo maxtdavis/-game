@@ -293,7 +293,6 @@ class Goal(GameObject):
     def __init__(self, x, y, filename=None, color=(0,255,0)):
         super().__init__(x, y, filename, color)
         self.is_solid = False
-        self.height = 64  # Two blocks tall
 
 class Barrier(GameObject):
     def __init__(self, x, y, filenames=(None, None), state1_color=(255,200,200), state2_color=(255,0,0)):
