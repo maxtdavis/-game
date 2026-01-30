@@ -48,7 +48,7 @@ class Player:
         # Draw idle animation if idle
         if is_idle and self.direction == 'right':
             self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed * 2:
+            if self.animation_counter >= self.animation_speed:
                 self.animation_counter = 0
                 self.animation_frame = (self.animation_frame + 1) % len(self.idle_right_frames)
             
@@ -180,7 +180,7 @@ class Terrain(GameObject):
     
     def load_image(self):
         """Load image based on placement, fallback to brown square if not found"""
-        filename = f"images/themes/standard/{self.placement}.png"
+        filename = f"images/themes/cave/{self.placement}.png"
         try:
             self.image = pygame.image.load(filename)
             self.width = self.image.get_width()
@@ -355,7 +355,7 @@ class Game:
         self.paintbar = PaintBar(0,0)
         self.font_large = pygame.font.Font(None, 28)
         self.font_small = pygame.font.Font(None, 20)
-        self.background = "images/background.jpg"
+        self.background = "images/background.png"
 
         # Grid of tiles (background by default)
         self.grid = self.create_grid()
