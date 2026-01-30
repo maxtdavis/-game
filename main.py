@@ -395,7 +395,7 @@ class Game:
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                     self.movable_objects.append(MovableObject(x, y, filename="images/barrel.png"))
                 elif ch == 'g': # Goal
-                    self.goal = Goal(x, y, color=(0,255,0))
+                    self.goal = Goal(x, y, filename=("images/bell.png"))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
                 elif ch == '^': # Barrier (solid in top-down, passable in platformer)
                     barrier = Barrier(x, y, filenames=('images/barrier_off.png', 'images/barrier_on.png'), state1_color=(135,206,235), state2_color=(255,0,0))
