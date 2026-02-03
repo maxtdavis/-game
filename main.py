@@ -144,7 +144,7 @@ class Player:
                 except:
                     pass
             else:
-                print("Unhandled animation state")
+                print("Unhandled animation state in game state 1.")
         
         #Draw player with default sprite or color
         if self.filename:
@@ -227,7 +227,7 @@ class Terrain(GameObject):
     
     def load_image(self):
         """Load image based on placement, fallback to brown square if not found"""
-        filename = f"images/themes/cave/{self.placement}.png"
+        filename = f"images/themes/standard/{self.placement}.png"
         try:
             self.image = pygame.image.load(filename)
             self.width = self.image.get_width()
@@ -440,7 +440,7 @@ class Game:
                     self.grid[r][c] = ImmovableProp(x, y, color=(135,206,235), filenames=("images/flower_dead.png", "images/flower_alive.png"), is_alive=False)
                 elif ch == 'M': # Movable object
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
-                    self.movable_objects.append(MovableObject(x, y, filename="images/barrel.png"))
+                    self.movable_objects.append(MovableObject(x, y, filename="images/barrel_alive.png"))
                 elif ch == 'g': # Goal
                     self.goal = Goal(x, y, filename=("images/bell.png"))
                     self.grid[r][c] = Background(x, y, color=(135,206,235))
@@ -690,6 +690,11 @@ class Game:
         level_text = self.font_large.render(f"Level {self.level.index}", True, (255, 200, 100))
         level_rect = level_text.get_rect(center=(self.width // 2, 32))
         self.screen.blit(level_text, level_rect)
+
+        # Draw tip text
+        tip_text = self.font_small.render("R: Reset | O: Previous Level | P: Next Level | SPACE: Toggle Mode | Z: Shoot Paint", True, (200, 200, 200))
+        tip_rect = tip_text.get_rect(center=(self.width // 2, 54))
+        self.screen.blit(tip_text, tip_rect)
     
     def reset_level(self):
         # Reset player position and state
