@@ -34,6 +34,8 @@ class Player:
         self.run_left_frames = ["images/character/run_left/1.png", "images/character/run_left/2.png", "images/character/run_left/3.png", "images/character/run_left/4.png"]
         self.fall_right_frames = ["images/character/fall_right/1.png", "images/character/fall_right/2.png"]
         self.fall_left_frames = ["images/character/fall_left/1.png", "images/character/fall_left/2.png"]
+        self.jump_right_frames = ["images/character/jump_right/1.png"]
+        self.jump_left_frames = ["images/character/jump_left/1.png"]
         self.animation_frame = 0
         self.animation_counter = 0
         self.animation_speed = 5  # frames per sprite
@@ -48,82 +50,103 @@ class Player:
         is_idle = self.vel_x == 0 and self.vel_y == 0
         
         # Draw idle animation if idle
-        if is_idle and self.direction == 'right':
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.idle_right_frames)
-            
-            try:
-                image = pygame.image.load(self.idle_right_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        elif is_idle and self.direction == 'left':
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed * 2:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.idle_left_frames)
-            
-            try:
-                image = pygame.image.load(self.idle_left_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        elif not is_idle and self.grounded and self.direction == 'right':
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.run_right_frames)
-            
-            try:
-                image = pygame.image.load(self.run_right_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        elif not is_idle and self.grounded and self.direction == 'left':
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.run_left_frames)
+        if self.state == 1:
+            if is_idle and self.direction == 'right':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.idle_right_frames)
+                
+                try:
+                    image = pygame.image.load(self.idle_right_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif is_idle and self.direction == 'left':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed * 2:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.idle_left_frames)
+                
+                try:
+                    image = pygame.image.load(self.idle_left_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and self.grounded and self.direction == 'right':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.run_right_frames)
+                
+                try:
+                    image = pygame.image.load(self.run_right_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and self.grounded and self.direction == 'left':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.run_left_frames)
 
-            try:
-                image = pygame.image.load(self.run_left_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        elif not is_idle and not self.grounded and self.direction == 'right' and self.state == 1 and self.vel_y > 0:
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.fall_right_frames)
-            try:
-                image = pygame.image.load(self.fall_right_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        elif not is_idle and not self.grounded and self.direction == 'left' and self.state == 1 and self.vel_y > 0:
-            self.animation_counter += 1
-            if self.animation_counter >= self.animation_speed:
-                self.animation_counter = 0
-                self.animation_frame = (self.animation_frame + 1) % len(self.fall_left_frames)
-            try:
-                image = pygame.image.load(self.fall_left_frames[self.animation_frame])
-                surf.blit(image, (self.x, self.y))
-                return
-            except:
-                pass
-        else:
-            # Reset animation when moving
-            self.animation_counter = 0
-            self.animation_frame = 0
+                try:
+                    image = pygame.image.load(self.run_left_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and not self.grounded and self.direction == 'right' and self.vel_y > 0:
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.fall_right_frames)
+                try:
+                    image = pygame.image.load(self.fall_right_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and not self.grounded and self.direction == 'left' and self.vel_y > 0:
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.fall_left_frames)
+                try:
+                    image = pygame.image.load(self.fall_left_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and not self.grounded and self.direction == 'right' and self.vel_y <= 0:
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.jump_right_frames)
+                try:
+                    image = pygame.image.load(self.jump_right_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif not is_idle and not self.grounded and self.direction == 'left' and self.vel_y <= 0:
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.jump_left_frames)
+                try:
+                    image = pygame.image.load(self.jump_left_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            else:
+                print("Unhandled animation state")
         
-        # Draw player with default sprite or color
+        #Draw player with default sprite or color
         if self.filename:
             try:
                 image = pygame.image.load(self.filename)
