@@ -227,7 +227,7 @@ class Terrain(GameObject):
     
     def load_image(self):
         """Load image based on placement, fallback to brown square if not found"""
-        filename = f"images/themes/palace/{self.placement}.png"
+        filename = f"images/themes/standard/{self.placement}.png"
         try:
             self.image = pygame.image.load(filename)
             self.width = self.image.get_width()
