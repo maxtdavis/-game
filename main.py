@@ -155,6 +155,7 @@ class Player:
             except:
                 pass
         pygame.draw.rect(surf, self.color, self.rect)
+        print("Failed to load", self.filename)
 
 class GameObject:
     def __init__(self, x, y, filename=None, color=(0,0,0)):
