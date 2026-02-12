@@ -36,6 +36,8 @@ class Player:
         self.fall_left_frames = ["images/character/fall_left/1.png", "images/character/fall_left/2.png"]
         self.jump_right_frames = ["images/character/jump_right/1.png"]
         self.jump_left_frames = ["images/character/jump_left/1.png"]
+        self.fly_right_frames = ["images/character/fly_right/1.png", "images/character/fly_right/2.png", "images/character/fly_right/3.png", "images/character/fly_right/4.png"]
+        self.fly_left_frames = ["images/character/fly_left/1.png", "images/character/fly_left/2.png", "images/character/fly_left/3.png", "images/character/fly_left/4.png"]
         self.animation_frame = 0
         self.animation_counter = 0
         self.animation_speed = 5  # frames per sprite
@@ -145,6 +147,29 @@ class Player:
                     pass
             else:
                 print("Unhandled animation state in game state 1.")
+        elif self.state == 2:
+            if self.direction == 'right':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.fly_right_frames)
+                try:
+                    image = pygame.image.load(self.fly_right_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
+            elif self.direction == 'left':
+                self.animation_counter += 1
+                if self.animation_counter >= self.animation_speed:
+                    self.animation_counter = 0
+                    self.animation_frame = (self.animation_frame + 1) % len(self.fly_left_frames)
+                try:
+                    image = pygame.image.load(self.fly_left_frames[self.animation_frame])
+                    surf.blit(image, (self.x, self.y))
+                    return
+                except:
+                    pass
         
         #Draw player with default sprite or color
         if self.filename:
